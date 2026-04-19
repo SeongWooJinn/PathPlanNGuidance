@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>extended_hastar</name>
+  <version>0.0.0</version>
+  <description>TODO: Extended_HAStar</description>
+  <maintainer email="uj@todo.todo">uj</maintainer>
+  <license>TODO: License declaration</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>opencv</depend>
+  <depend>ompl</depend>
+  <depend>eigen3</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
+
+<!-- ROS 2의 빌드 시스템(colcon)은 폴더 안에 CMakeLists.txt와 package.xml이 두 파일이 나란히 있어야만 "아, 여기가 하나의 독립적인 패키지구나!"라고 인식 -->
+<!-- Colcon build system이 Extended_HAStar를 단순 폴더가 아닌 패키지로 인식시키기 위해 package.xml 생성 -->

@@ -1,0 +1,28 @@
+# --- ROS 2 빌드 및 로그 파일 ---
+build/
+install/
+log/
+
+# --- Python 캐시 및 컴파일된 파일 ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- C++ 오브젝트 파일 및 컴파일 결과물 ---
+*.o
+*.obj
+*.so
+*.dylib
+*.dll
+
+# --- IDE 설정 (VSCode, PyCharm 등) ---
+.vscode/
+.idea/
+*.swp
+
+# --- OS 임시 파일 ---
+.DS_Store
+Thumbs.db
+
+# --- 외부 패키지 무시 (내가 짠 코드가 아닌 것들) ---
+# 예시: 클론해온 외부 패키지 폴더명을 적어주세요.

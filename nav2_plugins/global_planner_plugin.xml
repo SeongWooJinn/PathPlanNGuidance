@@ -1,0 +1,10 @@
+<library path="nav2_extended_hastar_plugin">   
+  <class name="extended_planner::ExtendedHybridAStarPlanner" type="extended_planner::ExtendedHybridAStarPlanner" base_class_type="nav2_core::GlobalPlanner">
+    <description>
+      Extended Hybrid A* Global Planner supporting multiple vehicle modes.
+    </description>
+  </class>
+</library>
+
+<!-- 우리 패키지에 이런 플러그인이 있습니다!"라고 ROS 2의 플러그인 관리자(pluginlib)에게 알려주는 **명세서(Metadata)** -->
+<!--path : CMakeLists.txt의 add_library(...) 명령어의 타겟 이름과 완전히 똑같아야함-->
