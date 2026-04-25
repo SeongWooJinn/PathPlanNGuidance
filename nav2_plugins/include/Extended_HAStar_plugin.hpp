@@ -10,9 +10,10 @@
 #include "nav2_costmap_2d/costmap_2d_ros.hpp"
 #include "nav2_util/lifecycle_node.hpp"
 #include "nav2_util/node_utils.hpp"
+#include <visualization_msgs/msg/marker.hpp>
+#include <std_msgs/msg/color_rgba.hpp>
 
 #include "../../Extended_HAStar/include/xhastar.h" 
-// // #include "../../Extended_HAStar/include/maps.h" // maps.h는 ros2연동시 미사용
 
 namespace extended_planner
 {
@@ -43,6 +44,9 @@ public:
   void customCostmapPublisher(const GridMap<double>& cost_map, 
     double resolution, double origin_x, double origin_y);
 
+  // Publisher custom_path to rviz2
+  void customPathPublihser(const std::vector<State>& path);
+
 private:
   // TF buffer
   std::shared_ptr<tf2_ros::Buffer> tf_;
@@ -71,24 +75,15 @@ private:
   // Publisher cost map to rviz2 for just visualizing
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr costmap_pub_;
 
+  // Publisher custom path to rviz2 for just visualizing
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr colored_path_pub_;
+
   // Weights
   PlannerWeights plannerweights_;
   VehicleWeights vehicleweights_;
 
-  // Configs
+  // Robot Configs
   RobotConfigs robotconfigs_;
-
-    // // vehicles physical params
-    // double WB_;
-    // double robot_length_;
-    // double robot_width_;
-    // double switch_time_;
-    // double ref_vel_;
-    // double sensor_fov_;
-
-    // double delta_max_; 
-    // double alpha_;
-    // double beta_;
 
 };
 

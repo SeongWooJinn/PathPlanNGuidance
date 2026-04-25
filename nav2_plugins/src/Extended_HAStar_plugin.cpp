@@ -29,12 +29,16 @@ void ExtendedHybridAStarPlanner::configure(
 
     clock_ = node->get_clock();
     logger_ = node->get_logger();
+
     // costmap publisher
     costmap_pub_ = node->create_publisher<nav_msgs::msg::OccupancyGrid>(
         "custom_costmap", rclcpp::QoS(1).transient_local());
 
-    RCLCPP_INFO(logger_, "Configured plugin %s", name_.c_str());
+    // custom path publisher
+    colored_path_pub_ = node->create_publisher<visualization_msgs::msg::Marker>(
+        "colored_mode_path", 1);
 
+    RCLCPP_INFO(logger_, "Configured plugin %s", name_.c_str());
     /////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////// 1. Robot Config Parameters Setting ///////////////////////////
     /////////////////////////////////////////////////////////////////////////////////////////
@@ -244,7 +248,7 @@ nav_msgs::msg::Path ExtendedHybridAStarPlanner::createPlan(
     }
 
     RCLCPP_INFO(logger_, "Find Path!");
-    raw_path = planner_->reconstructPath(); // try-catch exception handle
+    raw_path = planner_->reconstructPath(); 
     visualize_ros2_hybridastar_path(raw_path, occ_map, 10, robotconfigs_.robot_length, 
                         robotconfigs_.robot_width, "Global_Hybrid_A*_path_ros2", resolution);
 
@@ -270,9 +274,12 @@ nav_msgs::msg::Path ExtendedHybridAStarPlanner::createPlan(
 
     RCLCPP_INFO(logger_, "Finished Path Planning");
     customCostmapPublisher(planner_->getCostMap(), resolution, origin_x, origin_y); // costmap pub
+    customPathPublihser(raw_path);
+    
     return path;
 }
 
+/////////// Publishers ///////////
 void ExtendedHybridAStarPlanner::customCostmapPublisher(
     const GridMap<double>& cost_map, double resolution, double origin_x, double origin_y)
 {
@@ -311,6 +318,51 @@ void ExtendedHybridAStarPlanner::customCostmapPublisher(
     costmap_pub_->publish(std::move(msg));
 }
 
+void ExtendedHybridAStarPlanner::customPathPublihser(const std::vector<State>& path)
+{
+    visualization_msgs::msg::Marker marker;
+
+    marker.header.frame_id = global_frame_;
+    marker.header.stamp = clock_->now();
+    marker.ns = "hybrid_astar_modes";
+    marker.id = 0;
+
+    marker.type = visualization_msgs::msg::Marker::LINE_STRIP;
+    marker.action = visualization_msgs::msg::Marker::ADD;   
+    marker.scale.x = 0.05;
+
+    for(const auto& state : path)
+    {
+        geometry_msgs::msg::Point p;
+        p.x = state.x;
+        p.y = state.y;
+        p.z = 0.01;
+        marker.points.push_back(p);
+
+        std_msgs::msg::ColorRGBA color;
+        color.a = 1.0;
+
+        if (state.vehicle == VehicleMode::BicycleMode) {
+			color.r = 1.0;
+            color.g = 0.0;
+            color.b = 0.0;
+        }
+		else if (state.vehicle == VehicleMode::ParallelMode){
+			color.r = 0.0;
+            color.g = 1.0;
+            color.b = 0.0;
+        }
+		else {
+			color.r = 0.0;
+            color.g = 0.0;
+            color.b = 1.0;
+        }
+
+        marker.colors.push_back(color);
+    }
+
+    colored_path_pub_->publish(marker);
+}
 
 
 }  // namespace extended_planner

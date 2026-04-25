@@ -307,8 +307,8 @@ planner_server:
       use_guide_heuristic: true
       costmap_type: 0  # 0: Voronoi, 1: Exponential, 2: Sigmoid, 3: Nav2
       nav2_decay_rate: 700.0
-      exp_decay_rate: 50.0
-      sig_inflation_w: 50.0
+      exp_decay_rate: 1.0
+      sig_inflation_w: 5.0
       w_obs: 3.0
       w_fov: 6.0
       weighted_a: 1.8

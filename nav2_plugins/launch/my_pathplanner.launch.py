@@ -13,7 +13,7 @@ def generate_launch_description():
     # 하드코딩된 절대 경로 대신, ROS2 패키지 시스템을 이용해 경로를 유연하게 잡습니다.
     my_plugin_dir = get_package_share_directory('nav2_plugins')
     my_params_file = os.path.join(my_plugin_dir, 'config', 'nav2_params.yaml')
-    my_rviz_file = os.path.join(my_plugin_dir, 'rviz', 'my_rviz2_config.rviz')
+    my_rviz_file = os.path.join(my_plugin_dir, 'rviz', 'my_rviz2_config2.rviz')
 
     # 3. tb3_simulation_launch.py 가져오기 및 파라미터 덮어쓰기
     tb3_sim_launch = IncludeLaunchDescription(
@@ -24,7 +24,6 @@ def generate_launch_description():
             'use_sim_time': 'True',
             'params_file': my_params_file,
             'use_rviz': 'False'
-            # 'rviz_config_file': my_rviz_file
             # 'headless': 'False' # 가제보 화면을 끄고 싶다면 True로 설정 가능
         }.items()
     )
