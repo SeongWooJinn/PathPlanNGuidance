@@ -9,25 +9,21 @@ def generate_launch_description():
     # 1. nav2_bringup, 내 패키지(nav2_plugins) 패키지의 경로 찾기
     nav2_bringup_dir = get_package_share_directory('nav2_bringup')
     my_plugin_dir = get_package_share_directory('nav2_plugins')
-    ros_gz_sim = get_package_share_directory('ros_gz_sim')
     
     # 2. 하드코딩된 절대 경로 대신, ROS2 패키지 시스템을 이용해 경로를 유연하게 잡습니다.
     my_params_file = os.path.join(my_plugin_dir, 'config', 'nav2_params.yaml')
     my_rviz_file = os.path.join(my_plugin_dir, 'rviz', 'my_rviz2_config2.rviz')
-    my_map_file = os.path.join(my_plugin_dir, 'maps', 'maze_world.yaml')
-    # my_world_file = os.path.join(my_plugin_dir, 'worlds', 'maze_world.world')
 
     # 3. bringup_launch.py 가져오기 및 파라미터 덮어쓰기
-    nav2_bringup = IncludeLaunchDescription(
+    # tb3_simulation_launch.py
+    tb3_bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
-            os.path.join(nav2_bringup_dir, 'launch', 'bringup_launch.py')  # tb3_simulation_launch
+            os.path.join(nav2_bringup_dir, 'launch', 'tb3_simulation_launch.py')  # tb3_simulation_launch
         ),
         launch_arguments={
             'use_sim_time': 'True',
             'params_file': my_params_file,
             'use_rviz': 'False',
-            # 'world': my_world_file,  # 👈 가제보 3D 월드 변경
-            # 'map': my_map_file       # 👈 Nav2 2D 지도 변경
             # 'headless': 'False' # 가제보 화면을 끄고 싶다면 True로 설정 가능
         }.items()
     )
@@ -44,7 +40,7 @@ def generate_launch_description():
 
     # 4. 실행할 런치 파일들을 Description에 담아 반환
     ld = LaunchDescription()
-    ld.add_action(nav2_bringup)
+    ld.add_action(tb3_bringup)
     ld.add_action(rviz_node)
 
     return ld

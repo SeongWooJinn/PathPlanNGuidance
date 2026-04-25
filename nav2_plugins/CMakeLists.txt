@@ -56,7 +56,13 @@ install(TARGETS nav2_extended_hastar_plugin
 
 # 폴더 복사
 install(DIRECTORY
-  config behavior_trees launch rviz
+  config 
+  behavior_trees 
+  launch rviz 
+  models 
+  maps 
+  worlds
+  urdf
   DESTINATION share/${PROJECT_NAME}/
 )
 
