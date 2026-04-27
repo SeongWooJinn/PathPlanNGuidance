@@ -85,7 +85,7 @@ private:
     bool has_analytic_path_ = false;
     IVehicleMode* mode_for_analytic_path_ptr_ = nullptr;
     int analytic_path_check_interval_ = 20;
-    double possible_analytic_check_dist_ = 10.0; //5.0;
+    double possible_analytic_check_dist_ = 10.0; //10.0;
 
     // search structures (sparse)
     using PQE = std::tuple<double, int64>; // f, idx -> index만 관리

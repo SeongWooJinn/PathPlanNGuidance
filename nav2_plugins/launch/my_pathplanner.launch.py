@@ -1,6 +1,7 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch.substitutions import LaunchConfiguration
 from launch.actions import IncludeLaunchDescription, SetEnvironmentVariable, AppendEnvironmentVariable
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
@@ -10,13 +11,24 @@ def generate_launch_description():
     my_plugin_dir = get_package_share_directory('nav2_plugins')
     nav2_bringup_dir = get_package_share_directory('nav2_bringup')
     ros_gz_sim_dir = get_package_share_directory('ros_gz_sim')
-    # turtlebot3_gazebo_dir = get_package_share_directory('turtlebot3_gazebo')
 
     # 2. 파일 경로 설정
+    # 1) maze_world + spawn pos
     my_world_file = os.path.join(my_plugin_dir, 'worlds', 'maze_world.world')
     my_map_file = os.path.join(my_plugin_dir, 'maps', 'maze_world.yaml')
+    x_pose = LaunchConfiguration('x_pose', default='2.0')
+    y_pose = LaunchConfiguration('y_pose', default='0.0')
+
+    # 2) turtlebot world + spawn pos
+    # my_world_file = os.path.join(my_plugin_dir, 'worlds', 'turtlebot3_world.world')
+    # my_map_file = os.path.join(my_plugin_dir, 'maps', 'turtlebot3_world.yaml')
+    # x_pose = LaunchConfiguration('x_pose', default='-2.0')
+    # y_pose = LaunchConfiguration('y_pose', default='0.0')
+
     my_params_file = os.path.join(my_plugin_dir, 'config', 'nav2_params.yaml')
     my_rviz_file = os.path.join(my_plugin_dir, 'rviz', 'my_rviz2_config2.rviz')
+
+    print(f'complete world, param setting!')
 
     # 3. 환경 변수 설정 (가제보가 모델을 찾을 수 있도록)
     set_env_vars = SetEnvironmentVariable(
@@ -25,31 +37,16 @@ def generate_launch_description():
     )
 
     # 4. Gazebo Sim 실행 (내가 만든 3D 월드 적용)
-    # gzserver_cmd = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource(
-    #         os.path.join(ros_gz_sim_dir, 'launch', 'gz_sim.launch.py')
-    #     ),
-    #     launch_arguments={
-    #         'gz_args': f'-r -s -v2 {my_world_file}', # f-string으로 확실하게 결합
-    #         'on_exit_shutdown': 'False'              # 디버깅을 위해 False로 변경
-    #         # 'gz_args': ['-r -s -v2 ', my_world_file], 
-    #         # 'on_exit_shutdown': 'true'
-    #         }.items()
-    # )
-
-    # gzclient_cmd = IncludeLaunchDescription(
-    #     PythonLaunchDescriptionSource(
-    #         os.path.join(ros_gz_sim_dir, 'launch', 'gz_sim.launch.py')
-    #     ),
-    #     launch_arguments={'gz_args': '-g -v2'}.items()
-    # )
-
     gz_sim = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(ros_gz_sim_dir, 'launch', 'gz_sim.launch.py')),
         launch_arguments={
+            # -s (Server Only): 물리 엔진과 서버만 실행
+            # -g (GUI Only): 물리 엔진 없이 화면(클라이언트)만 실행
+            # 인자 없음 (기본): 서버와 GUI를 동시에 실행
             'gz_args': f'-r -s -v2 {my_world_file}', # f-string으로 확실하게 결합
-            'on_exit_shutdown': 'False'              # 디버깅을 위해 False로 변경
+            # 'gz_args': f'-r -v2 {my_world_file}', # 화면(클라이언트)만 실행
+            'on_exit_shutdown': 'True'              # 디버깅을 위해 False로 변경
         }.items()
     )
 
@@ -60,13 +57,14 @@ def generate_launch_description():
         ),
         launch_arguments={'use_sim_time': 'True'}.items()
     )
+
     # # 6. 🚨 터틀봇 소환 & 브리지 연결 
     spawn_turtlebot = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(my_plugin_dir, 'launch', 'spawn_robot.launch.py')),
         launch_arguments={
-            'x_pose': '0.0',
-            'y_pose': '0.0'
+            'x_pose': x_pose,
+            'y_pose': y_pose
         }.items()
     )
 

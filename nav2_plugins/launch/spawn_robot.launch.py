@@ -12,6 +12,9 @@ def generate_launch_description():
     # Get the urdf file
     TURTLEBOT3_MODEL = os.environ['TURTLEBOT3_MODEL']
     model_folder = 'turtlebot3_' + TURTLEBOT3_MODEL
+    
+    print(f'model folder : {model_folder}')
+
     urdf_path = os.path.join(
         get_package_share_directory('nav2_plugins'),
         'models',

@@ -104,6 +104,12 @@ bool HybridAStar::run(double sx, double sy, double stheta, int sgear, VehicleMod
         std::cerr << "StartOnInValidSpace" << std::endl;
         return false;
     }
+    // check collision of goal position
+    if (!collisionFreeApprox(gx, gy, gtheta)) 
+    {
+        std::cerr << "[Error] Goal pose (including footprint) is in collision!" << std::endl;
+        return false;
+    }
     if (cost_map_(goal_yi, goal_xi) >= 253.0)
     {
         std::cerr << "GolaOnInValidSpace" << std::endl;
@@ -195,12 +201,14 @@ bool HybridAStar::run(double sx, double sy, double stheta, int sgear, VehicleMod
         cur_n.nearest_guide_idx = cameFrom_[cur_idx].parent_guide_path_idx; // [추가] 부모의 인덱스 복원!
 
         // // loop 터미널 출력은 속도 저하됨
-        // std::cout << "iter: " << iter << " -> " <<
+        // std::cout << "iter: " << iter << " -> " << std::endl;
         //    "curr state : " << "x, y, theta, gear, steer, vehiclemode : (" << cur_state.x << ", " << cur_state.y << ", " <<
         //    cur_state.theta << ", " << cur_state.gear << ", " << cur_state.steering << ", " << cur_state.vehicle << ")" << std::endl;
 
         double dist2goal = std::hypot(cur_state.x - gx, cur_state.y - gy);
-
+        // if (dist2goal < 10.0) {
+        //     std::cout << "Near Goal! Iter: " << iter <<  std::endl;
+        // }
         // periodically check analyticPath
         bool check_rs = true;
         if (iter % analytic_path_check_interval_ == 0) {
@@ -228,6 +236,16 @@ bool HybridAStar::run(double sx, double sy, double stheta, int sgear, VehicleMod
                     // }
                     return true;
                 }
+                // [추가 로직] RS 곡선은 실패했지만, 거리가 매우 가깝고 헤딩이 비슷하다면 강제 성공 처리
+                double xy_tolerance = 0.5; // 0.5m 이내
+                double yaw_tolerance = 10.0 * M_PI / 180.0; // 10도 이내
+                
+                if (dist2goal < xy_tolerance && std::fabs(angDiff(cur_state.theta, gtheta)) < yaw_tolerance) {
+                    std::cout << "############# Reached within Goal Tolerance! #############" << std::endl;
+                    has_analytic_path_ = false; // RS 패스는 없음
+                    last_goal_idx_ = cur_idx;
+                    return true;
+                }
             }
         }
 
@@ -238,7 +256,7 @@ bool HybridAStar::run(double sx, double sy, double stheta, int sgear, VehicleMod
         for (const auto& mode : all_vehicles_) {
             for (const auto& seg : mode->getSuccessors(cur_state)) {
                 if (planner_weights_.use_guide_heuristic) {
-                    if (!isCorridor(seg, cur_n.nearest_guide_idx, 2.0)) continue;        // for guided path heuristic
+                    if (!isCorridor(seg, cur_n.nearest_guide_idx, 5.0)) continue; // for guided path heuristic, thres custom
                 }
                 bool sample_ok = true;
                 for (auto& pp : seg.samples) { // pp -> for bound check in samples

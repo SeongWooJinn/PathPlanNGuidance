@@ -306,12 +306,12 @@ planner_server:
       is_standalone: false
       use_guide_heuristic: true
       costmap_type: 0  # 0: Voronoi, 1: Exponential, 2: Sigmoid, 3: Nav2
-      nav2_decay_rate: 700.0
+      nav2_decay_rate: 1000.0
       exp_decay_rate: 1.0
-      sig_inflation_w: 5.0
+      sig_inflation_w: 50.0
       w_obs: 3.0
       w_fov: 6.0
-      weighted_a: 1.8
+      weighted_a: 1.8   # guide heuristic -> higher than 1.8, not guide->1.0
       # vehicle weights
       w_curv: 1.0
       w_steer: 1.0

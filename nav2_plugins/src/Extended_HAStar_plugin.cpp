@@ -148,7 +148,7 @@ nav_msgs::msg::Path ExtendedHybridAStarPlanner::createPlan(
     double origin_x = costmap_->getOriginX();
     double origin_y = costmap_->getOriginY();
 
-    // RCLCPP_INFO(rclcpp::get_logger("ExtendedHybridAStar"), "1. Costmap 크기: rows=%d, cols=%d", rows, cols);
+    RCLCPP_INFO(logger_, "Costmap 크기: rows=%d, cols=%d", rows, cols);
 
     // Create Map for algorithm
     GridMap<int> occ_map(rows, cols, resolution, origin_x, origin_y);
