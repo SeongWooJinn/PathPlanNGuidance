@@ -103,7 +103,7 @@ inline void VoronoiFieldCostMap(
 			else if (dist <= sigma) {
 				cost_map_(y, x) = 253.0;	// INSCRIBED_OBSTACLE
 			}
-			if (dist <= max_dist_val) {
+			else if (dist <= max_dist_val) {
 				double cost_decay = 1.0 / (1.0 + dist);
 				double voronoi_decay = (d_v / (dist + d_v));
 				double potential_cost = std::pow((dist - max_dist_val) / max_dist_val, 2);
@@ -220,14 +220,26 @@ inline void Nav2CostMap(
 			else if (dist <= sigma) {
 				cost_map_(y, x) = 253.0;	// INSCRIBED_OBSTACLE
 			}
-			else if (dist < inflation_radius) {
-				// 거리가 멀어질수록 비용이 부드럽게 1.0으로 떨어짐
-				// double ratio = (inflation_radius - dist) / (inflation_radius - inscribed_radius);
-				double ratio = (inflation_radius - dist) / (inflation_radius - sigma);
+			else if (dist < inflation_radius) {// [수정] Nav2 표준인 Exponential Decay 적용
+                // 장애물 경계(sigma)에서 거리가 멀어질수록 지수 함수로 비용 감소
+                double distance_from_obs = dist - sigma;
+                double cost = 251.0 * std::exp(-3.0 * distance_from_obs);
 
-				// 거리의 제곱에 비례하여 비용 감소 (가까울수록 급격히 증가)
-				// cost_map_(y, x) = (weight * ratio * ratio) + 1.0;
-				cost_map_(y, x) = (251.0 * ratio * ratio) + 1.0;	// INFRATION_LAYER
+                // [핵심 최적화] Cost Deadzone 적용
+                // 비용이 10.0 이하로 떨어지면 그냥 0.0(Free Space)으로 간주
+                if (cost < 10.0) {
+                    cost_map_(y, x) = 0.0;
+                } else {
+                    cost_map_(y, x) = cost;
+                }
+
+				// // 거리가 멀어질수록 비용이 부드럽게 1.0으로 떨어짐
+				// // double ratio = (inflation_radius - dist) / (inflation_radius - inscribed_radius);
+				// double ratio = (inflation_radius - dist) / (inflation_radius - sigma);
+
+				// // 거리의 제곱에 비례하여 비용 감소 (가까울수록 급격히 증가)
+				// // cost_map_(y, x) = (weight * ratio * ratio) + 1.0;
+				// cost_map_(y, x) = (251.0 * ratio * ratio) + 1.0;	// INFRATION_LAYER
 			}
 			else{
 				cost_map_(y, x) = 0.0;		// FREE_SPACE

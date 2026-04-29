@@ -243,11 +243,14 @@ nav_msgs::msg::Path ExtendedHybridAStarPlanner::createPlan(
             std::to_string(gy) + ") was occupied");
     }
     std::vector<State> raw_path;
+    auto search_start = std::chrono::system_clock::now();
     if(!planner_->run(sx, sy, stheta, sgear, smode, gx, gy, gtheta)) {
         throw nav2_core::NoValidPathCouldBeFound("Failed to create plan");
     }
-
-    RCLCPP_INFO(logger_, "Find Path!");
+    auto search_end = std::chrono::system_clock::now();
+    auto search_elapsed = std::chrono::duration_cast<std::chrono::seconds>(search_end - search_start);
+    
+    RCLCPP_INFO(logger_, "Find Path! Elapsed Time : %ld sec", search_elapsed.count());
     raw_path = planner_->reconstructPath(); 
     visualize_ros2_hybridastar_path(raw_path, occ_map, 10, robotconfigs_.robot_length, 
                         robotconfigs_.robot_width, "Global_Hybrid_A*_path_ros2", resolution);

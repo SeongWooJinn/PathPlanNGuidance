@@ -437,9 +437,8 @@ private:
         }
         h *= COST_SCALE;
 
-        // w_obs(1.0)랑 h2d_(1.1)가중치 간의 균형 필요
         double final_h = 0.0;
-        final_h = std::max(h, 1.1 * h2d_(next_n.yi, next_n.xi) * COST_SCALE);   // holonomic + non-holonomic heuristic
+        final_h = std::max(h, 1.5 * h2d_(next_n.yi, next_n.xi) * COST_SCALE);   // holonomic + non-holonomic heuristic
 
         // cur_mode != goal_mode -> 반드시 전환이 발생하므로 heuristic에 더해도 무방
         // -----> 어차피 끝은 analytic path여서 bicycle mode이어야함

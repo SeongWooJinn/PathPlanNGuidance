@@ -112,6 +112,9 @@ public:
 
 private:
 
+    ob::State* s = nullptr; //state_space_->allocState();
+    ob::State* g = nullptr; //state_space_->allocState();
+
     inline int estimateGear(const State& prev, const State& curr)
     {
         double dx = curr.x - prev.x;

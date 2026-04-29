@@ -87,6 +87,8 @@ BicycleMode::BicycleMode() { curr_mode_type_ = VehicleMode::BicycleMode; }
 void BicycleMode::setAnalyticPathSpace() {
     state_space_ = std::make_shared<ob::ReedsSheppStateSpace>(min_turn_radius_);
     //state_space_ = std::make_shared<ob::DubinsStateSpace>(min_turn_radius_);
+    s = state_space_->allocState();
+    g = state_space_->allocState();
 }
 
 void BicycleMode::setVehicleProperties(
@@ -172,8 +174,8 @@ double BicycleMode::getEdgeCost(const PathSegment& seg, Node& from, Node& to)
 
 double BicycleMode::getKinematicHeuristic(const Node& next, const Node& goal)
 {
-    ob::State* s = state_space_->allocState();
-    ob::State* g = state_space_->allocState();
+    // ob::State* s = state_space_->allocState();
+    // ob::State* g = state_space_->allocState();
     
     // s->as<ob::SE2StateSpace::StateType>()->setXY(next.xi, next.yi);
     // s->as<ob::SE2StateSpace::StateType>()->setYaw(normalizeAngle(next.thetai));
@@ -187,8 +189,8 @@ double BicycleMode::getKinematicHeuristic(const Node& next, const Node& goal)
     g->as<ob::SE2StateSpace::StateType>()->setYaw(normalizeAngle(goal.state.theta));
 
     double h_rs = state_space_->distance(s, g);
-    state_space_->freeState(s);
-    state_space_->freeState(g);
+    // state_space_->freeState(s);
+    // state_space_->freeState(g);
 
     return h_rs;
     
