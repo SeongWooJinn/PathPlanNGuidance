@@ -3,16 +3,22 @@ from acados_template import AcadosOcp, AcadosOcpSolver
 import casadi as ca
 import numpy as np
 from bicycle_model import export_bicycle_model
+from parallel_model import export_parallel_model
+from spin_model import export_spin_model
 
-def generate_mpc():
+def generate_mpc(model):
     ocp = AcadosOcp()
-    model = export_bicycle_model()
     ocp.model = model
+
+    # 모델 이름별로 폴더를 따로 만들도록 
+    ocp.code_export_directory = f'c_generated_{model.name}'
 
     # 예측 호라이즌 설정 (예: 1초 앞을 0.05초 간격으로 20번 쪼개서 예측)
     N = 20
     Tf = 1.0
-    ocp.dims.N = N
+    # ocp.dims.N = N
+    ocp.solver_options.N_horizon = N
+    ocp.solver_options.tf = Tf
 
     # ===============================================
     # 파라미터 (Parameters): 실시간으로 변하는 외부 입력값
@@ -20,15 +26,17 @@ def generate_mpc():
     # x_obs, y_obs (가장 가까운 장애물의 좌표)
     p = ca.SX.sym('p', 2) 
     ocp.model.p = p # 모델에 파라미터 등록
+    ocp.parameter_values = np.array([0.0, 0.0]) # initialize
 
     # ===============================================
     # 목적 함수 (Cost Function) 세팅 (NONLINEAR_LS 방식)
     # ===============================================
+    ocp.cost.cost_type_0 = 'NONLINEAR_LS'
     ocp.cost.cost_type = 'NONLINEAR_LS'
     ocp.cost.cost_type_e = 'NONLINEAR_LS' # 종점(Terminal) 코스트
 
-    nx = model.x.size()[1]
-    nu = model.u.size()[1]
+    nx = model.x.shape[0]
+    nu = model.u.shape[0]
     ny = nx + nu + 1 # x(5) + u(2) + 장애물항(1) = 8 차원
     ny_e = nx # 종점은 제어입력과 장애물항 생략 가능
 
@@ -39,6 +47,7 @@ def generate_mpc():
     obs_penalty = 1.0 / ca.sqrt((model.x[0] - x_obs)**2 + (model.x[1] - y_obs)**2 + epsilon)
 
     # y = [x, y, theta, v, delta, a, delta_dot, obs_penalty]
+    ocp.model.cost_y_expr_0 = ca.vertcat(model.x, model.u, obs_penalty)
     ocp.model.cost_y_expr = ca.vertcat(model.x, model.u, obs_penalty)
     ocp.model.cost_y_expr_e = model.x
 
@@ -46,26 +55,43 @@ def generate_mpc():
     W = np.diag([10.0, 10.0, 5.0, 1.0, 1.0,  # Q (상태 추종 가중치)
                  0.1, 0.5,                   # R (제어 부드러움 가중치)
                  100.0])                     # W_obs (장애물 회피 척력 가중치)
+    ocp.cost.W_0 = W
     ocp.cost.W = W
     ocp.cost.W_e = np.diag([10.0, 10.0, 5.0, 1.0, 1.0]) # 종점 가중치
 
     # 참조 궤적 초기화 (나중에 C++에서 덮어씀)
+    ocp.cost.yref_0 = np.zeros(ny)
     ocp.cost.yref = np.zeros(ny)
     ocp.cost.yref_e = np.zeros(ny_e)
 
-    # ===============================================
     # 제약 조건 (Constraints): 로봇의 물리적 한계
-    # ===============================================
     # idxbu : 제어 입력 index
-    ocp.constraints.lbu = np.array([-2.5, -1.0]) # a 최소, delta_dot 최소
-    ocp.constraints.ubu = np.array([ 2.5,  1.0]) # a 최대, delta_dot 최대
-    ocp.constraints.idxbu = np.array([0, 1])     # 0 idx : a, 1 idx : delta_dot
+    # reference : nav2_params.yaml -> controller_server
+    ocp.constraints.lbu = np.array([-3.0, -1.0]) # a 최소, delta_dot 최소
+    ocp.constraints.ubu = np.array([ 3.0,  1.0]) # a 최대, delta_dot 최대
+    ocp.constraints.idxbu = np.array([0, 1])     # 0th idx : a, 1st idx : delta_dot    
 
-    # 상태 제약 (예: 최대 조향각 제한 -30도 ~ 30도)
-    # idxbx : 상태 변수 index
-    ocp.constraints.lbx = np.array([-0.523]) 
-    ocp.constraints.ubx = np.array([ 0.523])
-    ocp.constraints.idxbx = np.array([4]) # delta(4번째 인덱스)
+    if (model.name == 'bicycle_model'):
+        # 상태 제약 (예: 최대 조향각 제한 -75도 ~ 75도)
+        # idxbx : 상태 변수 index
+        # reference : nav2_params.yaml -> ExtendedHybridAStar, delta_max
+        ocp.constraints.lbx = np.array([-1.3]) 
+        ocp.constraints.ubx = np.array([ 1.3])
+        ocp.constraints.idxbx = np.array([4]) # delta(4번째 인덱스)
+    elif (model.name == 'parallel_model'):
+        # 상태 제약 (예: 최대 조향각 제한 -75도 ~ 75도)
+        # idxbx : 상태 변수 index
+        # reference : nav2_params.yaml -> ExtendedHybridAStar, alpha
+        ocp.constraints.lbx = np.array([-1.57])  # = alpha
+        ocp.constraints.ubx = np.array([ 1.57])
+        ocp.constraints.idxbx = np.array([4]) # delta(4번째 인덱스)
+    elif (model.name == 'spin_model'):
+        # 상태 제약 (예: 최대 omega(각속도) 제한 -75도 ~ 75도)
+        # idxbx : 상태 변수 index
+        # reference : nav2_params.yaml -> ExtendedHybridAStar
+        ocp.constraints.lbx = np.array([-0.35])  # = vx_min
+        ocp.constraints.ubx = np.array([ 0.5])  # = vx_max
+        ocp.constraints.idxbx = np.array([4]) # delta(4번째 인덱스)
 
     # 초기 상태 세팅
     ocp.constraints.x0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
@@ -74,10 +100,48 @@ def generate_mpc():
     ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'
     ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
     ocp.solver_options.integrator_type = 'ERK'
-    ocp.solver_options.nlp_solver_type = 'SQP_RTI' # 실시간 제어에 매우 빠름
-
-    AcadosOcpSolver(ocp, json_file='acados_ocp.json')
+    # ocp.solver_options.nlp_solver_type = 'SQP_RTI'    # 실시간 제어에 매우 빠름, RTI option(1회 연산)
+    ocp.solver_options.nlp_solver_type = 'SQP'          # Full SQP(반복 연산)
+    ocp.solver_options.nlp_solver_max_iter = 50         # Full SQP일때 솔버가 최대 50번까지 반복해서 정답을 찾도록 허용
+    
+    AcadosOcpSolver(ocp, json_file=f'acados_ocp_{model.name}.json')
     print("성공적으로 C 코드가 생성되었습니다!")
 
 if __name__ == '__main__':
-    generate_mpc()
+    models = [export_bicycle_model(), export_parallel_model(), export_spin_model()]
+    for m in models:
+        generate_mpc(m)
+
+
+# ############ 목표 궤적 예제 코드 ############
+
+#     // # generate_mpc.py
+#     // # 참조 궤적 초기화 (나중에 C++에서 덮어씀)
+#     // ocp.cost.yref_0 = np.zeros(ny)
+#     // ocp.cost.yref = np.zeros(ny)
+#     // ocp.cost.yref_e = np.zeros(ny_e)
+
+#     // solve ocp in loop
+#     for (int ii = 0; ii < NTIMINGS; ii++)
+#     {
+#         // 1. 8차원 목표 궤적 배열 (1m 앞 직진)
+#         double yref[8] = {1.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+
+#         // initialize solution
+#         for (int i = 0; i < N; i++)
+#         {
+#             ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "x", x_init);
+#             ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "u", u0);
+#             // 목표 궤적 주입!
+#             ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "yref", yref);
+#         }
+        
+#         // 3. 종점(Terminal) 목표 궤적 주입 (5차원: x, y, theta, v, delta)
+#         double yref_e[5] = {1.0, 0.0, 0.0, 0.0, 0.0}; 
+#         ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, N, "yref", yref_e);
+
+#         ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, N, "x", x_init);
+#         status = parallel_model_acados_solve(acados_ocp_capsule);
+#         ocp_nlp_get(nlp_solver, "time_tot", &elapsed_time);
+#         min_time = MIN(elapsed_time, min_time);
+#     }

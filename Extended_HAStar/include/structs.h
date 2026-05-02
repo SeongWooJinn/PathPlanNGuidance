@@ -10,15 +10,15 @@
 constexpr double COST_SCALE = 100.0;    // cost & heuristic scale factor for matching costmap normalization(0~255)
 
 // 현재 vehicle mode를 표시, 순서대로 0~2
-// 일부만 적용 시 bicycle은 필수, parallel/holonomic 순서 변경 필요
+// 일부만 적용 시 bicycle은 필수, parallel/spin 순서 변경 필요
 enum class VehicleMode : int
 {
     // 무조건 0부터 시작
     BicycleMode = 0,
-    //HolonomicMode = 1,
+    //SpinMode = 1,
     //ParallelMode = 2
     ParallelMode = 1,
-    HolonomicMode = 2,
+    SpinMode = 2,
     COUNT       // 단지 enum class 요소 개수를 파악하기 위한 요소
 };
 
@@ -113,18 +113,18 @@ struct RobotConfigs
 struct PlannerWeights {
     // 1. System & Mode Settings
     bool is_standalone = true;         // for save result .png
-    bool use_guide_heuristic = true;    // guide_heuristic or dij_rs_heuristic
+    bool use_guide_heuristic = false;    // guide_heuristic or dij_rs_heuristic
 
     // 2. Cost Map Settings
     int costmap_type = 0; // 0: Voronoi, 1: Exponential, 2: Sigmoid, 3: Nav2
-    double nav2_decay_rate = 10.0;      
-    double exp_decay_rate = 10.0;
-    double sig_inflation_w = 10.0;
+    double nav2_decay_rate = 1.0;      
+    double exp_decay_rate = 1.0;
+    double sig_inflation_w = 1.0;
 
     // 3. Hybrid A* Search Weights
-    double w_obs = 2.0;// 6.0;
+    double w_obs = 3.0;// 6.0;
     double w_fov = 6.0;//6.0
-    double weighted_a = 1.7;//2.0;
+    double weighted_a = 1.5;//2.0;
 
 };
 
@@ -134,13 +134,13 @@ struct VehicleWeights {
     // 4. Vehicle Kinematics Weights
     double w_curv = 1.0; //2.0;
     double w_steer = 1.0; //4.0;
-    double reverse_penalty = 1.5;
+    double reverse_penalty = 3.0;//1.5;
     double gear_shift_penalty = 1.0; // 2.0;
 
     // 5. Mode Switch Penalties
     double bicycle_switch_penalty = 1.0;
     double parallel_switch_penalty = 1.0;
-    double holonomic_switch_penalty = 1.0;
+    double spin_switch_penalty = 1.0;
 };
 
 // enum class 연산자 오버로딩
@@ -148,7 +148,7 @@ inline std::ostream& operator<<(std::ostream& os, VehicleMode v) {
     switch (v) {
     case VehicleMode::BicycleMode: os << "BicycleMode"; break;
     case VehicleMode::ParallelMode: os << "ParallelMode"; break;
-    case VehicleMode::HolonomicMode: os << "HolonomicMode"; break;
+    case VehicleMode::SpinMode: os << "SpinMode"; break;
     }
     return os;
 }

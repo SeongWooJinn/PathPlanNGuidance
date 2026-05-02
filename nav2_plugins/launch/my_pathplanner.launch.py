@@ -50,8 +50,8 @@ def generate_launch_description():
             # -s (Server Only): 물리 엔진과 서버만 실행
             # -g (GUI Only): 물리 엔진 없이 화면(클라이언트)만 실행
             # 인자 없음 (기본): 서버와 GUI를 동시에 실행
-            # 'gz_args': f'-r -s -v2 {my_world_file}', # f-string으로 확실하게 결합
-            'gz_args': f'-r -v2 {my_world_file}', # 화면(클라이언트)만 실행
+            'gz_args': f'-r -s -v2 {my_world_file}', # f-string으로 확실하게 결합
+            # 'gz_args': f'-r -v2 {my_world_file}', # 화면(클라이언트)만 실행
             'on_exit_shutdown': 'True'              # 디버깅을 위해 False로 변경
         }.items()
     )

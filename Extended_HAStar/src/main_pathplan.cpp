@@ -73,13 +73,13 @@ int main() {
     crab->setMapResolution(resolution);
     crab->setWeights(vehicle_w);
 
-    // Holonomic mode params setting
-    auto holo = std::make_unique<HolonomicMode>();
-    holo->setModeType(VehicleMode::HolonomicMode);
-    holo->setVehicleProperties(my_robot.WB, my_robot.beta, my_robot.robot_length, my_robot.robot_width, 
+    // Spin mode params setting
+    auto spin = std::make_unique<SpinMode>();
+    spin->setModeType(VehicleMode::SpinMode);
+    spin->setVehicleProperties(my_robot.WB, my_robot.beta, my_robot.robot_length, my_robot.robot_width, 
                                my_robot.switch_time, my_robot.ref_vel, my_robot.sensor_fov);
-    holo->setMapResolution(resolution);
-    holo->setWeights(vehicle_w);
+    spin->setMapResolution(resolution);
+    spin->setWeights(vehicle_w);
 
     // ------------------ Example map setting ------------------
     // OccMap gt(rows, cols);
@@ -107,7 +107,7 @@ int main() {
         // vehicle mode 등록
         hastar.registVehicleMode(std::move(bicycle));
         hastar.registVehicleMode(std::move(crab));
-        hastar.registVehicleMode(std::move(holo));
+        hastar.registVehicleMode(std::move(spin));
 
         // Global Hybrid AStar Path
         //std::vector<std::pair<State, VehicleMode>> g_path;

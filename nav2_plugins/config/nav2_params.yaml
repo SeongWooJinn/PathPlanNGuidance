@@ -300,8 +300,8 @@ planner_server:
       ref_vel: 0.2
       sensor_fov: 6.28 # 2.0943951023931954923084289221863  # 2 * PI / 3 (라디안 값으로 계산해서 입력)
       delta_max: 1.3 #0.52359877559829887307710723054658   # infinity error block PI * 30 / 180
-      alpha: 1.5707963267948966192313216916398       # 90도 (라디안)
-      beta: 1.5707963267948966192313216916398        # 90도 (라디안)
+      alpha: 1.5707963267948966192313216916398       # 90도 (라디안), parallel mode
+      beta: 1.5707963267948966192313216916398        # 90도 (라디안), spin mode
       # planner weights
       is_standalone: false
       use_guide_heuristic: false
@@ -319,7 +319,7 @@ planner_server:
       gear_shift_penalty: 1.5
       bicycle_switch_penalty: 0.1
       parallel_switch_penalty: 0.1
-      holonomic_switch_penalty: 0.1
+      spin_switch_penalty: 0.1
 ###################### CUSTOM PLANNER_SERVER ######################
 
 smoother_server:

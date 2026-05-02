@@ -112,8 +112,8 @@ void ExtendedHybridAStarPlanner::configure(
     vehicleweights_.bicycle_switch_penalty = node->get_parameter(name_ + ".bicycle_switch_penalty").as_double();
     declare_parameter_if_not_declared(node, name_ + ".parallel_switch_penalty", rclcpp::ParameterValue(0.1));
     vehicleweights_.parallel_switch_penalty = node->get_parameter(name_ + ".parallel_switch_penalty").as_double();
-    declare_parameter_if_not_declared(node, name_ + ".holonomic_switch_penalty", rclcpp::ParameterValue(0.1));
-    vehicleweights_.holonomic_switch_penalty = node->get_parameter(name_ + ".holonomic_switch_penalty").as_double();
+    declare_parameter_if_not_declared(node, name_ + ".spin_switch_penalty", rclcpp::ParameterValue(0.1));
+    vehicleweights_.spin_switch_penalty = node->get_parameter(name_ + ".spin_switch_penalty").as_double();
   
 }
 
@@ -182,27 +182,27 @@ nav_msgs::msg::Path ExtendedHybridAStarPlanner::createPlan(
     bicycle->setMapResolution(resolution);
     bicycle->setWeights(vehicleweights_);
 
-    auto crab = std::make_unique<ParallelMode>();
-    crab->setModeType(VehicleMode::ParallelMode);
-    crab->setVehicleProperties(robotconfigs_.WB, robotconfigs_.delta_max, robotconfigs_.robot_length, robotconfigs_.robot_width, 
-                               robotconfigs_.switch_time, robotconfigs_.ref_vel, robotconfigs_.sensor_fov);
-    crab->setMapResolution(resolution);
-    crab->setWeights(vehicleweights_);
+    // auto crab = std::make_unique<ParallelMode>();
+    // crab->setModeType(VehicleMode::ParallelMode);
+    // crab->setVehicleProperties(robotconfigs_.WB, robotconfigs_.alpha, robotconfigs_.robot_length, robotconfigs_.robot_width, 
+    //                            robotconfigs_.switch_time, robotconfigs_.ref_vel, robotconfigs_.sensor_fov);
+    // crab->setMapResolution(resolution);
+    // crab->setWeights(vehicleweights_);
 
-    auto holo = std::make_unique<HolonomicMode>();
-    holo->setModeType(VehicleMode::HolonomicMode);
-    holo->setVehicleProperties(robotconfigs_.WB, robotconfigs_.delta_max, robotconfigs_.robot_length, robotconfigs_.robot_width, 
-                                  robotconfigs_.switch_time, robotconfigs_.ref_vel, robotconfigs_.sensor_fov);
-    holo->setMapResolution(resolution);
-    holo->setWeights(vehicleweights_);
+    // auto spin = std::make_unique<SpinMode>();
+    // spin->setModeType(VehicleMode::SpinMode);
+    // spin->setVehicleProperties(robotconfigs_.WB, robotconfigs_.beta, robotconfigs_.robot_length, robotconfigs_.robot_width, 
+    //                               robotconfigs_.switch_time, robotconfigs_.ref_vel, robotconfigs_.sensor_fov);
+    // spin->setMapResolution(resolution);
+    // spin->setWeights(vehicleweights_);
 
     // 2. planner initialize
     planner_ = std::make_unique<HybridAStar>(occ_map, cost_map); 
     planner_->setWeights(plannerweights_);
     // vehicle mode 등록
     planner_->registVehicleMode(std::move(bicycle));
-    planner_->registVehicleMode(std::move(crab));
-    planner_->registVehicleMode(std::move(holo));
+    // planner_->registVehicleMode(std::move(crab));
+    // planner_->registVehicleMode(std::move(spin));
 
     // 3. Setting for path planning 
     double sx = start.pose.position.x;

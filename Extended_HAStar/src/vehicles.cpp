@@ -373,15 +373,15 @@ double ParallelMode::getKinematicHeuristic(const Node& next, const Node& goal)
 double ParallelMode::getSwitchCost() { return vehicle_weights_.parallel_switch_penalty * mode_switching_time_ * vehicle_ref_vel_; }
 
 ///////////////////////////////////////////////////
-///////////// 4. HolonomicMode Class ///////////////
+///////////// 4. SpinMode Class ///////////////
 ///////////////////////////////////////////////////
 // 위치는 고정한채 제자리 회전하여 헤딩만 바꾸는 모드
 // yaw 각속도 => ref_vel
 
-HolonomicMode::HolonomicMode() { curr_mode_type_ = VehicleMode::HolonomicMode; }
+SpinMode::SpinMode() { curr_mode_type_ = VehicleMode::SpinMode; }
 
 
-void HolonomicMode::setVehicleProperties(
+void SpinMode::setVehicleProperties(
     double WB, double dmax, double length,
     double width, double switch_time, double ref_vel, double fov, int nsteer)
 {
@@ -394,7 +394,7 @@ void HolonomicMode::setVehicleProperties(
     N_STEER_ = nsteer;
 }
 
-PathSegment HolonomicMode::propagate(const State& s, const int direction, const double action)
+PathSegment SpinMode::propagate(const State& s, const int direction, const double action)
 {
     PathSegment seg;
     seg.samples.reserve(10);        // 공간 미리 확보
@@ -410,7 +410,7 @@ PathSegment HolonomicMode::propagate(const State& s, const int direction, const 
     double step = action / steps;
     // get possible x,y,theta in steps
     for (int i = 0; i < steps; i++) {
-        // Holonomic mode는 거리 변화 없음
+        // Spin mode는 거리 변화 없음
         //double dtheta =
         cur.x = seg.start.x;  //+= step * cos(seg.start.theta + cur.steering);
         cur.y = seg.start.y;  //+= step * sin(seg.start.theta + cur.steering);
@@ -424,9 +424,9 @@ PathSegment HolonomicMode::propagate(const State& s, const int direction, const 
     return seg;
 }
 
-double HolonomicMode::getEdgeCost(const PathSegment& seg, Node& from, Node& to)
+double SpinMode::getEdgeCost(const PathSegment& seg, Node& from, Node& to)
 {
-    //holonomic에서 길이는 0
+    //Spin 길이는 0
 
     // for length
     //double length = seg.length;     
@@ -463,7 +463,7 @@ double HolonomicMode::getEdgeCost(const PathSegment& seg, Node& from, Node& to)
     return cost * COST_SCALE;
 }
 
-double HolonomicMode::getKinematicHeuristic(const Node& next, const Node& goal)
+double SpinMode::getKinematicHeuristic(const Node& next, const Node& goal)
 {
     // goal과의 delta theta에 따라 거리가 같더라도 cost 다름
     double dx = next.state.x - goal.state.x;
@@ -477,6 +477,6 @@ double HolonomicMode::getKinematicHeuristic(const Node& next, const Node& goal)
 
 }
 
-double HolonomicMode::getSwitchCost() { return vehicle_weights_.holonomic_switch_penalty * mode_switching_time_ * vehicle_ref_vel_; }
+double SpinMode::getSwitchCost() { return vehicle_weights_.spin_switch_penalty * mode_switching_time_ * vehicle_ref_vel_; }
 
 

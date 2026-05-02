@@ -66,16 +66,6 @@ protected:
     // cost weights
     VehicleWeights vehicle_weights_;
 
-    // double w_curv_ = 1.0;//2.0;
-    // double w_steer_ = 1.0;//4.0;
-    // double reverse_penalty_ = 1.5;
-    // double gear_shift_penalty_ = 1.0;// 2.0;
-
-    // // mode switching weights
-    // double bicycle_switch_penalty_ = 1.0;
-    // double parallel_switch_penalty_ = 1.0;
-    // double holonomic_switch_penalty_ = 1.0;
-
     double map_resolution_;
 
     inline double angleDiff(double a, double b) {
@@ -158,14 +148,14 @@ private:
 };
 
 ///////////////////////////////////////////////////
-///////////// 4. HolonomicMode Class ///////////////
+///////////// 4. SpinMode Class ///////////////
 ///////////////////////////////////////////////////
 // 위치는 고정한채 제자리 회전하여 헤딩만 바꾸는 모드
 // yaw 각속도 => ref_vel
-class HolonomicMode : public IVehicleMode
+class SpinMode : public IVehicleMode
 {
 public:
-    HolonomicMode();
+    SpinMode();
     void setVehicleProperties(
         double WB, double dmax, double length,
         double width, double switch_time, double ref_vel, double fov, int nsteer = 5) override;
