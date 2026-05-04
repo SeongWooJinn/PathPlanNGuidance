@@ -32,6 +32,8 @@
 // standard
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
+
 // acados
 #include "acados/utils/print.h"
 #include "acados/utils/math.h"
@@ -47,6 +49,7 @@
 #define NU     BICYCLE_MODEL_NU
 #define NBX0   BICYCLE_MODEL_NBX0
 #define NP_GLOBAL   BICYCLE_MODEL_NP_GLOBAL
+#define _USE_MATH_DEFINES
 
 
 int main()
@@ -121,7 +124,7 @@ int main()
     for (int ii = 0; ii < NTIMINGS; ii++)
     {
         // 1. 8차원 목표 궤적 배열 (1m 앞 직진)
-        double yref[8] = {0.1, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+        double yref[8] = {5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
         // initialize solution
         for (int i = 0; i < N; i++)
@@ -133,7 +136,7 @@ int main()
         }
         
         // 3. 종점(Terminal) 목표 궤적 주입 (5차원: x, y, theta, v, delta)
-        double yref_e[5] = {0.1, 0.1, 0.0, 0.0, 0.0}; 
+        double yref_e[5] = {5.0, 0.0, 0.0, 0.0, 0.0}; 
         ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, N, "yref", yref_e);
 
         ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, N, "x", x_init);

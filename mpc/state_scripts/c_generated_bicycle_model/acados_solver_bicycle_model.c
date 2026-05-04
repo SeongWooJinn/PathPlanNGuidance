@@ -440,34 +440,64 @@ void bicycle_model_acados_setup_nlp_in(bicycle_model_solver_capsule* capsule, co
     {
         // set time_steps
     
-        double time_step = 0.05;
+        double time_step = 0.1;
         for (int i = 0; i < N; i++)
         {
             ocp_nlp_in_set(nlp_config, nlp_dims, nlp_in, i, "Ts", &time_step);
         }
         // set cost scaling
         double* cost_scaling = malloc((N+1)*sizeof(double));
-        cost_scaling[0] = 0.05;
-        cost_scaling[1] = 0.05;
-        cost_scaling[2] = 0.05;
-        cost_scaling[3] = 0.05;
-        cost_scaling[4] = 0.05;
-        cost_scaling[5] = 0.05;
-        cost_scaling[6] = 0.05;
-        cost_scaling[7] = 0.05;
-        cost_scaling[8] = 0.05;
-        cost_scaling[9] = 0.05;
-        cost_scaling[10] = 0.05;
-        cost_scaling[11] = 0.05;
-        cost_scaling[12] = 0.05;
-        cost_scaling[13] = 0.05;
-        cost_scaling[14] = 0.05;
-        cost_scaling[15] = 0.05;
-        cost_scaling[16] = 0.05;
-        cost_scaling[17] = 0.05;
-        cost_scaling[18] = 0.05;
-        cost_scaling[19] = 0.05;
-        cost_scaling[20] = 1;
+        cost_scaling[0] = 0.1;
+        cost_scaling[1] = 0.1;
+        cost_scaling[2] = 0.1;
+        cost_scaling[3] = 0.1;
+        cost_scaling[4] = 0.1;
+        cost_scaling[5] = 0.1;
+        cost_scaling[6] = 0.1;
+        cost_scaling[7] = 0.1;
+        cost_scaling[8] = 0.1;
+        cost_scaling[9] = 0.1;
+        cost_scaling[10] = 0.1;
+        cost_scaling[11] = 0.1;
+        cost_scaling[12] = 0.1;
+        cost_scaling[13] = 0.1;
+        cost_scaling[14] = 0.1;
+        cost_scaling[15] = 0.1;
+        cost_scaling[16] = 0.1;
+        cost_scaling[17] = 0.1;
+        cost_scaling[18] = 0.1;
+        cost_scaling[19] = 0.1;
+        cost_scaling[20] = 0.1;
+        cost_scaling[21] = 0.1;
+        cost_scaling[22] = 0.1;
+        cost_scaling[23] = 0.1;
+        cost_scaling[24] = 0.1;
+        cost_scaling[25] = 0.1;
+        cost_scaling[26] = 0.1;
+        cost_scaling[27] = 0.1;
+        cost_scaling[28] = 0.1;
+        cost_scaling[29] = 0.1;
+        cost_scaling[30] = 0.1;
+        cost_scaling[31] = 0.1;
+        cost_scaling[32] = 0.1;
+        cost_scaling[33] = 0.1;
+        cost_scaling[34] = 0.1;
+        cost_scaling[35] = 0.1;
+        cost_scaling[36] = 0.1;
+        cost_scaling[37] = 0.1;
+        cost_scaling[38] = 0.1;
+        cost_scaling[39] = 0.1;
+        cost_scaling[40] = 0.1;
+        cost_scaling[41] = 0.1;
+        cost_scaling[42] = 0.1;
+        cost_scaling[43] = 0.1;
+        cost_scaling[44] = 0.1;
+        cost_scaling[45] = 0.1;
+        cost_scaling[46] = 0.1;
+        cost_scaling[47] = 0.1;
+        cost_scaling[48] = 0.1;
+        cost_scaling[49] = 0.1;
+        cost_scaling[50] = 1;
         for (int i = 0; i <= N; i++)
         {
             ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "scaling", &cost_scaling[i]);
@@ -750,7 +780,7 @@ static void bicycle_model_acados_create_set_opts(bicycle_model_solver_capsule* c
     ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "levenberg_marquardt", &levenberg_marquardt);
 
     /* options QP solver */
-    int qp_solver_cond_N;const int qp_solver_cond_N_ori = 20;
+    int qp_solver_cond_N;const int qp_solver_cond_N_ori = 50;
     qp_solver_cond_N = N < qp_solver_cond_N_ori ? N : qp_solver_cond_N_ori; // use the minimum value here
     ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "qp_cond_N", &qp_solver_cond_N);
 
@@ -791,7 +821,7 @@ static void bicycle_model_acados_create_set_opts(bicycle_model_solver_capsule* c
     double nlp_solver_tol_comp = 0.000001;
     ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "tol_comp", &nlp_solver_tol_comp);
 
-    int nlp_solver_max_iter = 50;
+    int nlp_solver_max_iter = 100;
     ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "max_iter", &nlp_solver_max_iter);
 
     // set options for adaptive Levenberg-Marquardt Update
@@ -1156,7 +1186,7 @@ void bicycle_model_acados_print_stats(bicycle_model_solver_capsule* capsule)
         printf("stat_n_max = %d is too small, increase it in the template!\n", stat_n_max);
         exit(1);
     }
-    double stat[816];
+    double stat[1616];
     ocp_nlp_get(capsule->nlp_solver, "statistics", stat);
 
     int nrow = nlp_iter+1 < stat_m ? nlp_iter+1 : stat_m;

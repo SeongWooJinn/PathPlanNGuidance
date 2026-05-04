@@ -14,8 +14,8 @@ def generate_mpc(model):
     ocp.code_export_directory = f'c_generated_{model.name}'
 
     # 예측 호라이즌 설정 (예: 1초 앞을 0.05초 간격으로 20번 쪼개서 예측)
-    N = 20
-    Tf = 1.0
+    N = 50 #20
+    Tf = 5.0 #1.0
     # ocp.dims.N = N
     ocp.solver_options.N_horizon = N
     ocp.solver_options.tf = Tf
@@ -67,9 +67,9 @@ def generate_mpc(model):
     # 제약 조건 (Constraints): 로봇의 물리적 한계
     # idxbu : 제어 입력 index
     # reference : nav2_params.yaml -> controller_server
-    ocp.constraints.lbu = np.array([-3.0, -1.0]) # a 최소, delta_dot 최소
-    ocp.constraints.ubu = np.array([ 3.0,  1.0]) # a 최대, delta_dot 최대
-    ocp.constraints.idxbu = np.array([0, 1])     # 0th idx : a, 1st idx : delta_dot    
+    ocp.constraints.lbu = np.array([-3.0, -1.0]) # a, delta_dot(or omega_dot) 최소
+    ocp.constraints.ubu = np.array([ 3.0,  1.0]) # a, delta_dot(or omega_dot) 최대
+    ocp.constraints.idxbu = np.array([0, 1])     # 0th idx : a, 1st idx : delta_dot (omega_dot)   
 
     if (model.name == 'bicycle_model'):
         # 상태 제약 (예: 최대 조향각 제한 -75도 ~ 75도)
@@ -91,7 +91,7 @@ def generate_mpc(model):
         # reference : nav2_params.yaml -> ExtendedHybridAStar
         ocp.constraints.lbx = np.array([-0.35])  # = vx_min
         ocp.constraints.ubx = np.array([ 0.5])  # = vx_max
-        ocp.constraints.idxbx = np.array([4]) # delta(4번째 인덱스)
+        ocp.constraints.idxbx = np.array([4]) # omega(4번째 인덱스)
 
     # 초기 상태 세팅
     ocp.constraints.x0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0])
@@ -102,7 +102,7 @@ def generate_mpc(model):
     ocp.solver_options.integrator_type = 'ERK'
     # ocp.solver_options.nlp_solver_type = 'SQP_RTI'    # 실시간 제어에 매우 빠름, RTI option(1회 연산)
     ocp.solver_options.nlp_solver_type = 'SQP'          # Full SQP(반복 연산)
-    ocp.solver_options.nlp_solver_max_iter = 50         # Full SQP일때 솔버가 최대 50번까지 반복해서 정답을 찾도록 허용
+    ocp.solver_options.nlp_solver_max_iter = 100         # Full SQP일때 솔버가 최대 50번까지 반복해서 정답을 찾도록 허용
     
     AcadosOcpSolver(ocp, json_file=f'acados_ocp_{model.name}.json')
     print("성공적으로 C 코드가 생성되었습니다!")

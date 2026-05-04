@@ -64,7 +64,7 @@
 #define SPIN_MODEL_NY0    8
 #define SPIN_MODEL_NY     8
 #define SPIN_MODEL_NYN    5
-#define SPIN_MODEL_N      20
+#define SPIN_MODEL_N      50
 #define SPIN_MODEL_NH     0
 #define SPIN_MODEL_NHN    0
 #define SPIN_MODEL_NH0    0

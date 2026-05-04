@@ -73,7 +73,7 @@ int parallel_model_acados_sim_create(parallel_model_sim_solver_capsule * capsule
     const int np = PARALLEL_MODEL_NP;
     bool tmp_bool;
 
-    double Tsim = 0.05;
+    double Tsim = 0.1;
 
     capsule->acados_sim_mem = NULL;
 
