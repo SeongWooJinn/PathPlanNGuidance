@@ -1,7 +1,7 @@
 #ifndef MPC_CONTROLLER_H
 #define MPC_CONTROLLER_H
 
-#include "base_controller.h"
+#include "../base_controller.h"
 #include "acados_c/ocp_nlp_interface.h"
 
 // extern "C" {
@@ -35,12 +35,12 @@ public:
 ///////////// 공통 로직 (BaseController의 가상 함수 구현) /////////////
     // 초기 예상 궤적 
     void setInitialGuess(double* x_init, double* u_init) override {
-        for (int i = 0; i < N; i++)
+        for (int i = 0; i < N_; i++)
         {
-            ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, i, "x", x_init);
-            ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, i, "u", u_init);
+            ocp_nlp_out_set(nlp_config_, nlp_dims_, nlp_out_, i, "x", x_init);
+            ocp_nlp_out_set(nlp_config_, nlp_dims_, nlp_out_, i, "u", u_init);
         }
-        ocp_nlp_cost_model_set(nlp_config, nlp_dims, N_, "x", x_init);
+        ocp_nlp_out_set(nlp_config_, nlp_dims_, nlp_out_, N_, "x", x_init);
     }
     // 현재 로봇의 물리적 위치(상태) 제약 세팅
     void setInitialState(double* lbx0, double* ubx0) override {
@@ -48,11 +48,14 @@ public:
         ocp_nlp_constraints_model_set(nlp_config_, nlp_dims_, nlp_in_, 0, "ubx", ubx0);
     }
 
-    void setTargetTrajectory(const double* yref, const double* yref_e) override {
+    void setTargetTrajectory(
+        const std::vector<ReferenceTraj>& yref, 
+        const ReferenceTrajTerminal& yref_e) override 
+    {
         for (int i = 0; i < N_; i++) {
-            ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, i, "yref", const_cast<double*>(yref));
+            ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, i, "yref", (double*)&yref[i]);
         }
-        ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, N_, "yref", const_cast<double*>(yref_e));
+        ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, N_, "yref", (double*)&yref_e);
     }
 
     void getControlInput(double* u_out) override {

@@ -59,6 +59,7 @@ target_precompile_headers(run_xhastar
     <ompl/base/spaces/DubinsStateSpace.h>
     <ompl/base/State.h>
     <filesystem>
+    <fstream>
 )
 ############### END : Make main standalone exe file ###############
 

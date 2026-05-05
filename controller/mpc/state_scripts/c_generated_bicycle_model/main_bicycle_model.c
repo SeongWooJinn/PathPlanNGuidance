@@ -32,8 +32,6 @@
 // standard
 #include <stdio.h>
 #include <stdlib.h>
-#include <math.h>
-
 // acados
 #include "acados/utils/print.h"
 #include "acados/utils/math.h"
@@ -49,7 +47,6 @@
 #define NU     BICYCLE_MODEL_NU
 #define NBX0   BICYCLE_MODEL_NBX0
 #define NP_GLOBAL   BICYCLE_MODEL_NP_GLOBAL
-#define _USE_MATH_DEFINES
 
 
 int main()
@@ -114,31 +111,15 @@ int main()
     double xtraj[NX * (N+1)];
     double utraj[NU * N];
 
-    // # generate_mpc.py
-    // # 참조 궤적 초기화 (나중에 C++에서 덮어씀)
-    // ocp.cost.yref_0 = np.zeros(ny)
-    // ocp.cost.yref = np.zeros(ny)
-    // ocp.cost.yref_e = np.zeros(ny_e)
-
     // solve ocp in loop
     for (int ii = 0; ii < NTIMINGS; ii++)
     {
-        // 1. 8차원 목표 궤적 배열 (1m 앞 직진)
-        double yref[8] = {5.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-
         // initialize solution
         for (int i = 0; i < N; i++)
         {
             ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "x", x_init);
             ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "u", u0);
-            // 목표 궤적 주입!
-            ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "yref", yref);
         }
-        
-        // 3. 종점(Terminal) 목표 궤적 주입 (5차원: x, y, theta, v, delta)
-        double yref_e[5] = {5.0, 0.0, 0.0, 0.0, 0.0}; 
-        ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, N, "yref", yref_e);
-
         ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, N, "x", x_init);
         status = bicycle_model_acados_solve(acados_ocp_capsule);
         ocp_nlp_get(nlp_solver, "time_tot", &elapsed_time);

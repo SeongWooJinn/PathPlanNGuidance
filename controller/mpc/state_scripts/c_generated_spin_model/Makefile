@@ -143,7 +143,7 @@ ocp_cython_c: ocp_shared_lib
 	-o acados_ocp_solver_pyx.c \
 	-I $(INCLUDE_PATH)/../interfaces/acados_template/acados_template \
 	$(INCLUDE_PATH)/../interfaces/acados_template/acados_template/acados_ocp_solver_pyx.pyx \
-	-I /home/uj/PathPlan_ws/src/mpc/state_scripts/c_generated_spin_model \
+	-I /home/uj/PathPlan_ws/src/controller/mpc/state_scripts/c_generated_spin_model \
 
 ocp_cython_o: ocp_cython_c
 	$(CC) $(ACADOS_FLAGS) -c -O2 \
@@ -172,7 +172,7 @@ sim_cython_c: sim_shared_lib
 	-o acados_sim_solver_pyx.c \
 	-I $(INCLUDE_PATH)/../interfaces/acados_template/acados_template \
 	$(INCLUDE_PATH)/../interfaces/acados_template/acados_template/acados_sim_solver_pyx.pyx \
-	-I /home/uj/PathPlan_ws/src/mpc/state_scripts/c_generated_spin_model \
+	-I /home/uj/PathPlan_ws/src/controller/mpc/state_scripts/c_generated_spin_model \
 
 sim_cython_o: sim_cython_c
 	$(CC) $(ACADOS_FLAGS) -c -O2 \

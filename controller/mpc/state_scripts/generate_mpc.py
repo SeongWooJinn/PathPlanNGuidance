@@ -115,33 +115,33 @@ if __name__ == '__main__':
 
 # ############ 목표 궤적 예제 코드 ############
 
-#     // # generate_mpc.py
-#     // # 참조 궤적 초기화 (나중에 C++에서 덮어씀)
-#     // ocp.cost.yref_0 = np.zeros(ny)
-#     // ocp.cost.yref = np.zeros(ny)
-#     // ocp.cost.yref_e = np.zeros(ny_e)
+    # // # generate_mpc.py
+    # // # 참조 궤적 초기화 (나중에 C++에서 덮어씀)
+    # // ocp.cost.yref_0 = np.zeros(ny)
+    # // ocp.cost.yref = np.zeros(ny)
+    # // ocp.cost.yref_e = np.zeros(ny_e)
 
-#     // solve ocp in loop
-#     for (int ii = 0; ii < NTIMINGS; ii++)
-#     {
-#         // 1. 8차원 목표 궤적 배열 (1m 앞 직진)
-#         double yref[8] = {1.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+    # // solve ocp in loop
+    # for (int ii = 0; ii < NTIMINGS; ii++)
+    # {
+    #     // 1. 8차원 목표 궤적 배열 (1m 앞 직진)
+    #     double yref[8] = {1.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
 
-#         // initialize solution
-#         for (int i = 0; i < N; i++)
-#         {
-#             ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "x", x_init);
-#             ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "u", u0);
-#             // 목표 궤적 주입!
-#             ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "yref", yref);
-#         }
+    #     // initialize solution
+    #     for (int i = 0; i < N; i++)
+    #     {
+    #         ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "x", x_init);
+    #         ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "u", u0);
+    #         // 목표 궤적 주입!
+    #         ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "yref", yref);
+    #     }
         
-#         // 3. 종점(Terminal) 목표 궤적 주입 (5차원: x, y, theta, v, delta)
-#         double yref_e[5] = {1.0, 0.0, 0.0, 0.0, 0.0}; 
-#         ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, N, "yref", yref_e);
+    #     // 3. 종점(Terminal) 목표 궤적 주입 (5차원: x, y, theta, v, delta)
+    #     double yref_e[5] = {1.0, 0.0, 0.0, 0.0, 0.0}; 
+    #     ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, N, "yref", yref_e);
 
-#         ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, N, "x", x_init);
-#         status = parallel_model_acados_solve(acados_ocp_capsule);
-#         ocp_nlp_get(nlp_solver, "time_tot", &elapsed_time);
-#         min_time = MIN(elapsed_time, min_time);
-#     }
+    #     ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, N, "x", x_init);
+    #     status = parallel_model_acados_solve(acados_ocp_capsule);
+    #     ocp_nlp_get(nlp_solver, "time_tot", &elapsed_time);
+    #     min_time = MIN(elapsed_time, min_time);
+    # }

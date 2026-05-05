@@ -2,6 +2,7 @@
 #ifndef STRUCT_H
 #define STRUCT_H
 #include <vector>
+#include <fstream>
 #include <eigen3/Eigen/Dense>
 #include <opencv2/opencv.hpp>
 
@@ -151,6 +152,42 @@ inline std::ostream& operator<<(std::ostream& os, VehicleMode v) {
     case VehicleMode::SpinMode: os << "SpinMode"; break;
     }
     return os;
+}
+
+// .bin save function
+inline void savePathToBin(const std::vector<State>& path, const std::string& filename) {
+    // ios::binary 플래그를 사용하여 바이너리 쓰기 모드로 파일 열기
+    std::ofstream out(filename, std::ios::binary);
+    if (!out) {
+        std::cerr << "경로 파일 저장 실패: " << filename << std::endl;
+        return;
+    }
+    // vector의 메모리 시작 주소부터 전체 크기만큼 단숨에 쓰기
+    out.write(reinterpret_cast<const char*>(path.data()), path.size() * sizeof(State));
+    out.close();
+    std::cout << "Hybrid A* 경로가 " << filename << " 에 바이너리로 저장되었습니다." << std::endl;
+}
+
+// 바이너리 파일 읽기 함수
+inline std::vector<State> loadPathFromBin(const std::string& filename) {
+    std::vector<State> path;
+    // 파일을 끝(ate)에서 열어서 파일의 전체 크기를 먼저 파악
+    std::ifstream in(filename, std::ios::binary | std::ios::ate);
+    if (in) {
+        size_t fileSize = in.tellg();
+        in.seekg(0, std::ios::beg); // 다시 처음으로 이동
+        
+        size_t numElements = fileSize / sizeof(State);
+        path.resize(numElements);
+        
+        // 메모리에 단숨에 읽어오기
+        in.read(reinterpret_cast<char*>(path.data()), fileSize);
+        in.close();
+        std::cout << "성공적으로 " << numElements << "개의 경로점을 불러왔습니다." << std::endl;
+    } else {
+        std::cerr << "경로 파일을 찾을 수 없습니다: " << filename << std::endl;
+    }
+    return path;
 }
 
 #endif

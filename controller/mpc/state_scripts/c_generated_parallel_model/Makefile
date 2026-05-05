@@ -37,38 +37,38 @@
 # model
 MODEL_SRC=
 
-MODEL_SRC+= bicycle_model_model/bicycle_model_expl_ode_fun.c
-MODEL_SRC+= bicycle_model_model/bicycle_model_expl_vde_forw.c
-MODEL_SRC+= bicycle_model_model/bicycle_model_expl_vde_adj.c
+MODEL_SRC+= parallel_model_model/parallel_model_expl_ode_fun.c
+MODEL_SRC+= parallel_model_model/parallel_model_expl_vde_forw.c
+MODEL_SRC+= parallel_model_model/parallel_model_expl_vde_adj.c
 
 MODEL_OBJ := $(MODEL_SRC:.c=.o)
 # optimal control problem - mostly CasADi exports
 OCP_SRC=
 
 
-OCP_SRC+= bicycle_model_cost/bicycle_model_cost_y_0_fun.c
-OCP_SRC+= bicycle_model_cost/bicycle_model_cost_y_0_fun_jac_ut_xt.c
-OCP_SRC+= bicycle_model_cost/bicycle_model_cost_y_0_hess.c
-OCP_SRC+= bicycle_model_cost/bicycle_model_cost_y_fun.c
-OCP_SRC+= bicycle_model_cost/bicycle_model_cost_y_fun_jac_ut_xt.c
-OCP_SRC+= bicycle_model_cost/bicycle_model_cost_y_hess.c
-OCP_SRC+= bicycle_model_cost/bicycle_model_cost_y_e_fun.c
-OCP_SRC+= bicycle_model_cost/bicycle_model_cost_y_e_fun_jac_ut_xt.c
-OCP_SRC+= bicycle_model_cost/bicycle_model_cost_y_e_hess.c
+OCP_SRC+= parallel_model_cost/parallel_model_cost_y_0_fun.c
+OCP_SRC+= parallel_model_cost/parallel_model_cost_y_0_fun_jac_ut_xt.c
+OCP_SRC+= parallel_model_cost/parallel_model_cost_y_0_hess.c
+OCP_SRC+= parallel_model_cost/parallel_model_cost_y_fun.c
+OCP_SRC+= parallel_model_cost/parallel_model_cost_y_fun_jac_ut_xt.c
+OCP_SRC+= parallel_model_cost/parallel_model_cost_y_hess.c
+OCP_SRC+= parallel_model_cost/parallel_model_cost_y_e_fun.c
+OCP_SRC+= parallel_model_cost/parallel_model_cost_y_e_fun_jac_ut_xt.c
+OCP_SRC+= parallel_model_cost/parallel_model_cost_y_e_hess.c
 
-OCP_SRC+= acados_solver_bicycle_model.c
+OCP_SRC+= acados_solver_parallel_model.c
 
 OCP_OBJ := $(OCP_SRC:.c=.o)
 # for sim solver
-SIM_SRC= acados_sim_solver_bicycle_model.c
+SIM_SRC= acados_sim_solver_parallel_model.c
 SIM_OBJ := $(SIM_SRC:.c=.o)
 
 # for target example_sim
-EX_SIM_SRC= main_sim_bicycle_model.c
+EX_SIM_SRC= main_sim_parallel_model.c
 EX_SIM_OBJ := $(EX_SIM_SRC:.c=.o)
 EX_SIM_EXE := $(EX_SIM_SRC:.c=)
 # for target example
-EX_SRC= main_bicycle_model.c
+EX_SRC= main_parallel_model.c
 EX_OBJ := $(EX_SRC:.c=.o)
 EX_EXE := $(EX_SRC:.c=)
 
@@ -110,8 +110,8 @@ LDLIBS+= -lm
 LDLIBS+= 
 
 # libraries
-LIBACADOS_SOLVER=libacados_solver_bicycle_model.so
-LIBACADOS_OCP_SOLVER=libacados_ocp_solver_bicycle_model.so
+LIBACADOS_SOLVER=libacados_solver_parallel_model.so
+LIBACADOS_OCP_SOLVER=libacados_ocp_solver_parallel_model.so
 LIBACADOS_SIM_SOLVER=lib$(SIM_SRC:.c=.so)
 
 # virtual targets
@@ -143,7 +143,7 @@ ocp_cython_c: ocp_shared_lib
 	-o acados_ocp_solver_pyx.c \
 	-I $(INCLUDE_PATH)/../interfaces/acados_template/acados_template \
 	$(INCLUDE_PATH)/../interfaces/acados_template/acados_template/acados_ocp_solver_pyx.pyx \
-	-I /home/uj/PathPlan_ws/src/mpc/state_scripts/c_generated_bicycle_model \
+	-I /home/uj/PathPlan_ws/src/controller/mpc/state_scripts/c_generated_parallel_model \
 
 ocp_cython_o: ocp_cython_c
 	$(CC) $(ACADOS_FLAGS) -c -O2 \
@@ -162,7 +162,7 @@ ocp_cython: ocp_cython_o
 	-o acados_ocp_solver_pyx.so \
 	-Wl,-rpath=$(LIB_PATH) \
 	acados_ocp_solver_pyx.o \
-	$(abspath .)/libacados_ocp_solver_bicycle_model.so \
+	$(abspath .)/libacados_ocp_solver_parallel_model.so \
 	$(LDFLAGS) $(LDLIBS)
 
 
@@ -172,7 +172,7 @@ sim_cython_c: sim_shared_lib
 	-o acados_sim_solver_pyx.c \
 	-I $(INCLUDE_PATH)/../interfaces/acados_template/acados_template \
 	$(INCLUDE_PATH)/../interfaces/acados_template/acados_template/acados_sim_solver_pyx.pyx \
-	-I /home/uj/PathPlan_ws/src/mpc/state_scripts/c_generated_bicycle_model \
+	-I /home/uj/PathPlan_ws/src/controller/mpc/state_scripts/c_generated_parallel_model \
 
 sim_cython_o: sim_cython_c
 	$(CC) $(ACADOS_FLAGS) -c -O2 \
@@ -191,7 +191,7 @@ sim_cython: sim_cython_o
 	-o acados_sim_solver_pyx.so \
 	-Wl,-rpath=$(LIB_PATH) \
 	acados_sim_solver_pyx.o \
-	$(abspath .)/libacados_sim_solver_bicycle_model.so \
+	$(abspath .)/libacados_sim_solver_parallel_model.so \
 	$(LDFLAGS) $(LDLIBS)
 
 clean:
@@ -203,13 +203,13 @@ clean_ocp_shared_lib:
 	$(RM) $(OCP_OBJ)
 
 clean_ocp_cython:
-	$(RM) libacados_ocp_solver_bicycle_model.so
-	$(RM) acados_solver_bicycle_model.o
+	$(RM) libacados_ocp_solver_parallel_model.so
+	$(RM) acados_solver_parallel_model.o
 	$(RM) acados_ocp_solver_pyx.so
 	$(RM) acados_ocp_solver_pyx.o
 
 clean_sim_cython:
-	$(RM) libacados_sim_solver_bicycle_model.so
-	$(RM) acados_sim_solver_bicycle_model.o
+	$(RM) libacados_sim_solver_parallel_model.so
+	$(RM) acados_sim_solver_parallel_model.o
 	$(RM) acados_sim_solver_pyx.so
 	$(RM) acados_sim_solver_pyx.o

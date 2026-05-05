@@ -53,9 +53,35 @@ int main() {
     // double beta = M_PI / 2.0;   // TURTLEBOT3 WAFFLE
       
     // ------------------ Weights setting ------------------
-    VehicleWeights vehicle_w;
     PlannerWeights planner_w;
 
+    // 1. System & Mode Settings
+    planner_w.is_standalone = true;         // for save result .png
+    planner_w.use_guide_heuristic = true;    // guide_heuristic or dij_rs_heuristic
+
+    // 2. Cost Map Settings
+    planner_w.costmap_type = 0; // 0: Voronoi, 1: Exponential, 2: Sigmoid, 3: Nav2
+    planner_w.nav2_decay_rate = 1.0;      
+    planner_w.exp_decay_rate = 1.0;
+    planner_w.sig_inflation_w = 1.0;
+
+    // 3. Hybrid A* Search Weights
+    planner_w.w_obs = 3.0;// 6.0;
+    planner_w.w_fov = 6.0;//6.0
+    planner_w.weighted_a = 1.5;//2.0;
+
+    VehicleWeights vehicle_w;
+    // 4. Vehicle Kinematics Weights
+    vehicle_w.w_curv = 1.0; //2.0;
+    vehicle_w.w_steer = 1.0; //4.0;
+    vehicle_w.reverse_penalty = 3.0;//1.5;
+    vehicle_w.gear_shift_penalty = 1.0; // 2.0;
+
+    // 5. Mode Switch Penalties
+    vehicle_w.bicycle_switch_penalty = 1.0;
+    vehicle_w.parallel_switch_penalty = 1.0;
+    vehicle_w.spin_switch_penalty = 1.0;
+    
     // Bicycle mode params setting
     double min_turn_R_bicycle = (2 * my_robot.WB) / std::tan(my_robot.delta_max);   // 곡률반경
     auto bicycle = std::make_unique<BicycleMode>();
@@ -131,5 +157,13 @@ int main() {
             std::cout << p.x << ", " << p.y << ", " << p.theta
             << ", " << p.gear << ", " << p.steering << ", " << p.vehicle << std::endl;
 
+        savePathToBin(g_path, "/tmp/hybrid_astar_path");
     }
+    std::vector<State> load_path = loadPathFromBin("/tmp/hybrid_astar_path");
+    std::cout << "load path successfully" << std::endl;
+    for (const auto& p : load_path) {
+        std::cout << p.x << ", " << p.y << ", " << p.theta
+        << ", " << p.gear << ", " << p.steering << ", " << p.vehicle << std::endl;
+    }
+
 }
