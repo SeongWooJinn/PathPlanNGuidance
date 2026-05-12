@@ -159,11 +159,11 @@ int main() {
 
         savePathToBin(g_path, "/tmp/hybrid_astar_path");
     }
-    std::vector<State> load_path = loadPathFromBin("/tmp/hybrid_astar_path");
-    std::cout << "load path successfully" << std::endl;
-    for (const auto& p : load_path) {
-        std::cout << p.x << ", " << p.y << ", " << p.theta
-        << ", " << p.gear << ", " << p.steering << ", " << p.vehicle << std::endl;
-    }
+    // std::vector<State> load_path = loadPathFromBin("/tmp/hybrid_astar_path");
+    // std::cout << "load path successfully" << std::endl;
+    // for (const auto& p : load_path) {
+    //     std::cout << p.x << ", " << p.y << ", " << p.theta
+    //     << ", " << p.gear << ", " << p.steering << ", " << p.vehicle << std::endl;
+    // }
 
 }

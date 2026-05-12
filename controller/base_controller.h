@@ -5,7 +5,7 @@
 #include "structs.h"
 #include <vector>
 #include <iostream>
-#include <math.h>
+// #include <math.h>
 #include <algorithm>
 
 class BaseController 
@@ -13,10 +13,14 @@ class BaseController
 public:
     virtual ~BaseController() = default;
 
-    // 모든 제어기가 가져야 할 필수 인터페이스
+    // 하위 수준 인터페이스(vehicle classes), 모든 하위 class가 가져야 할 필수 인터페이스
     virtual bool initialize() = 0;      // 메모리, 포인터 등 초기화
     virtual bool solve() = 0;
 
+    // 상위 수준 인터페이스(controller class)
+    virtual bool getRefTraj(std::vector<State>& global_path) = 0;
+    virtual int updateSlidingWindow(const double* curr) = 0;
+    virtual bool isGuidanceFinished() = 0;
     virtual void setInitialGuess(double* x_init, double* u_init) = 0;  // double* x_init처럼 배열(포인터)로, 초기 예상 궤적 세팅
     virtual void setInitialState(double* lbx0, double* ubx0) = 0;   // 현재 로봇의 물리적 상태 제약 세팅
     virtual void setTargetTrajectory(
