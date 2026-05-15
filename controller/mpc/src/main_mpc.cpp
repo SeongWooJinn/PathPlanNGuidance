@@ -9,7 +9,15 @@ int main()
     
     // 2. 경로 로드 (파일 로드 및 내부 포맷 변환 자동 수행)
     std::vector<State> g_path = loadPathFromBin("/tmp/hybrid_astar_path");
-    if (!mpc.getRefTraj(g_path)) return -1;
+
+    // 제어 파라미터 세팅 (실제 차량 사양에 맞게 튜닝)
+    // nav2_params.yaml controller server
+    double v_max = 0.5;        // 최대 허용 속도 (m/s), 
+    double a_lat_max = 3.0;    // 최대 횡가속도 한계 (커브길 감속용)
+    double a_dec_mag = 3.0;    // 최대 감속도 크기 (양수로 입력, 브레이크 성능)
+    double dt = 0.1;          // MPC 제어 주기 generate_mpc.py -> Tf / N)
+
+    if (!mpc.getRefTraj(g_path, v_max, a_lat_max, a_dec_mag, dt)) return -1;
 
     // 3. 로봇 초기 위치 (테스트용 가상 시작점)
     double current_x[5] = {0.0, 0.0, 0.0, 0.0, 0.0};
@@ -40,4 +48,3 @@ int main()
     return 0;
 }
     
-}

@@ -44,42 +44,60 @@ public:
     virtual ~MpcController() = default;
 
 ///////////// 공통 로직 (BaseController의 가상 함수 구현) /////////////
-    bool getRefTraj(std::vector<State>& global_path) override {
+    bool getRefTraj(
+        std::vector<State>& global_path, double v_max,
+        double a_lat_max, double a_dec_mag, double dt) override {
 
         if (global_path.empty()) return false;
 
-        int numElements = global_path.size();
-        ref_traj_.clear();
-        ref_traj_.reserve(numElements);
-
-        // 임시
-        for (const auto& gp : global_path) 
+        std::vector<ReferenceTraj> spatial_ref;
+        for (size_t i = 0; i < global_path.size(); ++i) 
         {
-            ReferenceTraj ref;
-
-            // interpolateState func
-            ref.x = gp.x;
-            ref.y = gp.y;
-            ref.theta = gp.theta;
-            ref.delta = gp.steering;
-
-            // curvaturelimitspeed func
-            ref.v = (gp.gear == 0) ? 1.0 : -1.0; // 임시 속도 할당
-            ref.a = 0.0;
-            ref.delta_dot = 0.0;
-            ref.obs = 0.0;
-            ref_traj_.push_back(ref);
+            spatial_ref[i].x = global_path[i].x;
+            spatial_ref[i].y = global_path[i].y;
+            spatial_ref[i].theta = global_path[i].theta;
+            spatial_ref[i].delta = global_path[i].steering;
+            spatial_ref[i].v = (global_path[i].gear == 0) ? v_max : -v_max;
         }
-        current_closest_idx_ = 0;
-        std::cout << "글로벌 경로 변환 완료: " << ref_traj_.size() << std::endl;
-        return true;
 
+        // 곡률 기반 속도 제약 , a = v^2 / r
+        // 경로 중간에 있는 급커브나 U턴 구간에 대한 속도 제약을 위해 수행
+        for (size_t i = 0; i < spatial_ref.size(); ++i)
+        {
+            double dx = spatial_ref[i].x - spatial_ref[i+1].x;
+            double dy = spatial_ref[i].y - spatial_ref[i+1].y;
+            double ds = std::hypot(dx, dy);
+            if (ds > 1e-3) {
+                double dtheta = std::abs(normalizeAngle(spatial_ref[i].theta - spatial_ref[i+1].theta));
+                double kappa = dtheta / ds;
+                if (kappa > 1e-5) {
+                    double v_safe = std::sqrt(a_lat_max / kappa);
+                    // 기어 방향 유지하면서 절대값만 제한
+                    double sign = (spatial_ref[i].v > 0) ? 1.0 : -1.0;
+                    spatial_ref[i].v = sign * std::min(v_safe, v_max);
+
+                }
+            }
+        }
+        spatial_ref.back().v = 0.0; // 종점 정지
+
+        // 감가속 제약, v^2 - v0^2 = 2as
+        // 언제부터 브레이크를 밟을 것인지 check
+        decelerationProfile(spatial_ref, a_dec_mag);
+
+        // 시간 기반 리샘플링, 시간 기반 궤적 계산
+        ref_traj_ = resampleToTimeBasedTrajectory(spatial_ref, 0.1);
+        current_closest_idx_ = 0;
+
+        std::cout << "글로벌 경로 변환 완료: " << ref_traj_.size() << std::endl;
+
+        return !ref_traj_.empty();
     }
 
     int updateSlidingWindow(const double* curr) override {
         if (ref_traj_.empty()) return -1;
 
-        // [A] 이전 인덱스 기반으로 가장 가까운 점 탐색 (연산 최적화)
+        // 이전 인덱스 기반으로 가장 가까운 점 탐색 (연산 최적화)
         double min_dist = 1e10;
         int search_limit = std::min(current_closest_idx_ + 20, (int)ref_traj_.size());
         for (int i = current_closest_idx_; i < search_limit; ++i) {
@@ -90,7 +108,7 @@ public:
             }
         }
 
-        // [B] 내부 버퍼를 사용하여 슬라이딩 윈도우 생성
+        // 내부 버퍼를 사용하여 슬라이딩 윈도우 생성
         std::vector<ReferenceTraj> yref_window(N_);
         for (int i = 0; i < N_; ++i) {
             int target_idx = std::min(current_closest_idx_ + i, (int)ref_traj_.size() - 1);
@@ -105,7 +123,7 @@ public:
         yref_e.v = ref_traj_[terminal_idx].v;
         yref_e.delta = ref_traj_[terminal_idx].delta;
 
-        // [C] 솔버에 즉시 타겟 주입
+        // 솔버에 즉시 타겟 주입
         setTargetTrajectory(yref_window, yref_e);
         
         return current_closest_idx_;

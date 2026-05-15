@@ -76,9 +76,9 @@ target_precompile_headers(run_mpc
     <filesystem>
     <fstream>
     <algorithm>
-    "mpc/include/structs.h"
-    "mpc/include/mpc_controller.h"
-    "mpc/include/vehicles_model.h"
+    # "mpc/include/structs.h"
+    # "mpc/include/mpc_controller.h"
+    # "mpc/include/vehicles_model.h"
 )
 ############### END : Make main standalone exe file ###############
 
