@@ -665,8 +665,8 @@ void bicycle_model_acados_setup_nlp_in(bicycle_model_solver_capsule* capsule, co
     double* lubx = calloc(2*NBX, sizeof(double));
     double* lbx = lubx;
     double* ubx = lubx + NBX;
-    lbx[0] = -1.3;
-    ubx[0] = 1.3;
+    lbx[0] = -1.5;
+    ubx[0] = 1.5;
 
     for (int i = 1; i < N; i++)
     {

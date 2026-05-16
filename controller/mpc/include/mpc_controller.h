@@ -3,11 +3,7 @@
 
 #include "base_controller.h"
 #include "acados_c/ocp_nlp_interface.h"
-#include "structs.h"  
-
-// extern "C" {
-//     #include "acados_c/ocp_nlp_interface.h"
-// }
+#include "structs_mpc.h"  
 
 // BaseController를 상속
 class MpcController : public BaseController 
@@ -46,11 +42,13 @@ public:
 ///////////// 공통 로직 (BaseController의 가상 함수 구현) /////////////
     bool getRefTraj(
         std::vector<State>& global_path, double v_max,
-        double a_lat_max, double a_dec_mag, double dt) override {
-
+        double a_lat_max, double a_dec_mag, double dt) override 
+    {
+        
         if (global_path.empty()) return false;
 
-        std::vector<ReferenceTraj> spatial_ref;
+        // 1. 우선 기존 공간경로에 v항을 넣어줌
+        std::vector<ReferenceTraj> spatial_ref(global_path.size());
         for (size_t i = 0; i < global_path.size(); ++i) 
         {
             spatial_ref[i].x = global_path[i].x;
@@ -60,9 +58,9 @@ public:
             spatial_ref[i].v = (global_path[i].gear == 0) ? v_max : -v_max;
         }
 
-        // 곡률 기반 속도 제약 , a = v^2 / r
+        // 2. 곡률 기반 속도 제약 , a = v^2 / r
         // 경로 중간에 있는 급커브나 U턴 구간에 대한 속도 제약을 위해 수행
-        for (size_t i = 0; i < spatial_ref.size(); ++i)
+        for (size_t i = 0; i < spatial_ref.size() - 1; ++i)
         {
             double dx = spatial_ref[i].x - spatial_ref[i+1].x;
             double dy = spatial_ref[i].y - spatial_ref[i+1].y;
@@ -81,16 +79,39 @@ public:
         }
         spatial_ref.back().v = 0.0; // 종점 정지
 
-        // 감가속 제약, v^2 - v0^2 = 2as
+        // 3. 감가속 제약, v^2 - v0^2 = 2as
         // 언제부터 브레이크를 밟을 것인지 check
         decelerationProfile(spatial_ref, a_dec_mag);
 
-        // 시간 기반 리샘플링, 시간 기반 궤적 계산
-        ref_traj_ = resampleToTimeBasedTrajectory(spatial_ref, 0.1);
+        // 4. 시간 기반 리샘플링, 시간 기반 궤적 계산
+        ref_traj_ = resampleTimeBasedTrajectory(spatial_ref, dt);
+
+        // Theta 언랩핑 (각도 점프 제거)
+        // 3.14에서 -3.14로 뛰는 현상을 3.14 -> 3.15 로 부드럽게 이어줌
+        if (!ref_traj_.empty()) {
+            // 궤적의 첫 번째 점을 차량의 실제 target 헤딩에 맞춤 (-pi 와 +pi 점프 억제)
+            double diff0 = ref_traj_[0].theta - global_path[0].theta;
+            while (diff0 > M_PI)  diff0 -= 2.0 * M_PI;
+            while (diff0 < -M_PI) diff0 += 2.0 * M_PI;
+            ref_traj_[0].theta = global_path[0].theta + diff0;
+
+            for (size_t i = 1; i < ref_traj_.size(); ++i) {
+                double diff = ref_traj_[i].theta - ref_traj_[i-1].theta;
+                while (diff > M_PI)  diff -= 2.0 * M_PI;
+                while (diff < -M_PI) diff += 2.0 * M_PI;
+                ref_traj_[i].theta = ref_traj_[i-1].theta + diff;
+            }
+        }
         current_closest_idx_ = 0;
 
         std::cout << "글로벌 경로 변환 완료: " << ref_traj_.size() << std::endl;
 
+        // std::cout << "x, y, theta, v, a, delta_dot" << std::endl;
+        // for (const auto& t : ref_traj_)
+        // {
+        //     std::cout << t.x << ", " << t.y << ", " << t.theta 
+        //         << ", " << t.v << ", " << t.a << ", " << t.delta_dot << std::endl;
+        // }
         return !ref_traj_.empty();
     }
 
@@ -98,8 +119,9 @@ public:
         if (ref_traj_.empty()) return -1;
 
         // 이전 인덱스 기반으로 가장 가까운 점 탐색 (연산 최적화)
+        // 인덱스를 찾는 범위
         double min_dist = 1e10;
-        int search_limit = std::min(current_closest_idx_ + 20, (int)ref_traj_.size());
+        int search_limit = std::min(current_closest_idx_ + 100, (int)ref_traj_.size());
         for (int i = current_closest_idx_; i < search_limit; ++i) {
             double dist = calcDistance(curr[0], curr[1], ref_traj_[i].x, ref_traj_[i].y);
             if (dist < min_dist) {
@@ -129,33 +151,64 @@ public:
         return current_closest_idx_;
 
     }
-    bool isGuidanceFinished() override {
-        return !ref_traj_.empty() && (current_closest_idx_ >= ref_traj_.size() - 1);
+    bool isGuidanceFinished(const double* curr) override {
+
+        if (ref_traj_.empty()) return true;
+
+        double goal_x = ref_traj_.back().x;
+        double goal_y = ref_traj_.back().y;
+        double dist_to_goal = calcDistance(goal_x, goal_y, curr[0], curr[1]);
+        
+        if (dist_to_goal <= GOAL_TOLERANCE)
+        {
+            std::cout << "Reach Goal !!!" << std::endl;
+            return true;
+        }
+        return false;
     }
 
     // 초기 예상 궤적, 초기 상태(x), 제어입력(u)세팅
     void setInitialGuess(double* x_init, double* u_init) override {
         for (int i = 0; i < N_; i++)
         {
-            ocp_nlp_out_set(nlp_config_, nlp_dims_, nlp_out_, i, "x", x_init);
-            ocp_nlp_out_set(nlp_config_, nlp_dims_, nlp_out_, i, "u", u_init);
+            ocp_nlp_out_set(nlp_config_, nlp_dims_, nlp_out_, nlp_in_, i, "x", x_init);
+            ocp_nlp_out_set(nlp_config_, nlp_dims_, nlp_out_, nlp_in_, i, "u", u_init);
         }
-        ocp_nlp_out_set(nlp_config_, nlp_dims_, nlp_out_, N_, "x", x_init);
+        ocp_nlp_out_set(nlp_config_, nlp_dims_, nlp_out_, nlp_in_, N_, "x", x_init);
     }
     // 현재 로봇의 물리적 위치(상태) 제약 세팅
     void setInitialState(double* lbx0, double* ubx0) override {
-        ocp_nlp_constraints_model_set(nlp_config_, nlp_dims_, nlp_in_, 0, "lbx", lbx0);
-        ocp_nlp_constraints_model_set(nlp_config_, nlp_dims_, nlp_in_, 0, "ubx", ubx0);
+        ocp_nlp_constraints_model_set(nlp_config_, nlp_dims_, nlp_in_, nlp_out_, 0, "lbx", lbx0);
+        ocp_nlp_constraints_model_set(nlp_config_, nlp_dims_, nlp_in_, nlp_out_, 0, "ubx", ubx0);
     }
 
     void setTargetTrajectory(
         const std::vector<ReferenceTraj>& yref, 
         const ReferenceTrajTerminal& yref_e) override 
     {
-        for (int i = 0; i < N_; i++) {
-            ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, i, "yref", (double*)&yref[i]);
+        for (int i = 0; i < N_; i++) {double target_array[8];
+            target_array[0] = yref[i].x;
+            target_array[1] = yref[i].y;
+            target_array[2] = yref[i].theta;
+            target_array[3] = yref[i].v;         
+            target_array[4] = yref[i].delta;     
+            target_array[5] = yref[i].a;
+            target_array[6] = yref[i].delta_dot;
+            // 쓰레기값 방지를 위해 0.0으로 명시적 초기화, obs 추가하면 수정
+            target_array[7] = 0.0;               
+            ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, i, "yref", target_array);
+            // ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, i, "yref", (double*)&yref[i]);
         }
-        ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, N_, "yref", (double*)&yref_e);
+        // 종점(Terminal) 타겟도 5칸 배열로 안전하게 패킹
+        double target_e_array[5];
+        target_e_array[0] = yref_e.x;
+        target_e_array[1] = yref_e.y;
+        target_e_array[2] = yref_e.theta;
+        target_e_array[3] = yref_e.v;
+        target_e_array[4] = yref_e.delta;
+
+        ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, N_, "yref", target_e_array);
+        // ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, N_, "yref", (double*)&yref_e);
     }
 
     void getControlInput(double* u_out) override {

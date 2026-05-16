@@ -75,8 +75,8 @@ def generate_mpc(model):
         # 상태 제약 (예: 최대 조향각 제한 -75도 ~ 75도)
         # idxbx : 상태 변수 index
         # reference : nav2_params.yaml -> ExtendedHybridAStar, delta_max
-        ocp.constraints.lbx = np.array([-1.3]) 
-        ocp.constraints.ubx = np.array([ 1.3])
+        ocp.constraints.lbx = np.array([-1.5]) 
+        ocp.constraints.ubx = np.array([ 1.5])
         ocp.constraints.idxbx = np.array([4]) # delta(4번째 인덱스)
     elif (model.name == 'parallel_model'):
         # 상태 제약 (예: 최대 조향각 제한 -75도 ~ 75도)
@@ -108,9 +108,13 @@ def generate_mpc(model):
     print("성공적으로 C 코드가 생성되었습니다!")
 
 if __name__ == '__main__':
-    models = [export_bicycle_model(), export_parallel_model(), export_spin_model()]
-    for m in models:
-        generate_mpc(m)
+
+    ####### 만약 .so 등이 덜 생성되었으면 안되면 해당 폴더 터미널에서 make shared_lib 수동 입력 ######
+    
+    # models = [export_bicycle_model(), export_parallel_model(), export_spin_model()]
+    # for m in models:
+    #     generate_mpc(m)
+    generate_mpc(export_bicycle_model())
 
 
 # ############ 목표 궤적 예제 코드 ############

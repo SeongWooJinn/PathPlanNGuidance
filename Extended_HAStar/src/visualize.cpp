@@ -295,6 +295,74 @@ void visualize_guide_path(
 	cv::imwrite(path_img.string(), img);
 }
 
+void visualize_tracking_performance(
+    const std::vector<State>& global_path,
+    const std::vector<State>& tracked_path, // MPC가 실제로 주행한 궤적 추가
+    GridMap<int>& occ_map,
+    int cell_size, double r_length, double r_width,
+    std::string title, double resolution)
+{
+    int rows = occ_map.data_.rows();
+    int cols = occ_map.data_.cols();
+
+    // 1. Occupancy Grid 맵 그리기 (기존 로직 동일)
+    cv::Mat img(rows * cell_size, cols * cell_size, CV_8UC3, Color::White);
+    for (int y = 0; y < rows; ++y) {
+        for (int x = 0; x < cols; ++x) {
+            if (occ_map(y,x) == 1) {
+                cv::rectangle(img,
+                    cv::Point(x * cell_size, y * cell_size),
+                    cv::Point((x + 1) * cell_size - 1, (y + 1) * cell_size - 1),
+                    Color::Black, cv::FILLED);
+            }
+        }
+    }
+
+    // 2. 옅은 색상으로 전역 경로(Reference) 먼저 그리기 (밑바탕)
+    for (size_t i = 1; i < global_path.size(); ++i) {
+        int p1x = occ_map.WorldXToXi(global_path[i - 1].x);
+        int p1y = occ_map.WorldYToYi(global_path[i - 1].y);
+        int p2x = occ_map.WorldXToXi(global_path[i].x);
+        int p2y = occ_map.WorldYToYi(global_path[i].y);
+        
+        cv::Point p1(p1x * cell_size, p1y * cell_size);
+        cv::Point p2(p2x * cell_size, p2y * cell_size);
+        
+        // 옅은 회색 점선 느낌으로 그리기
+        cv::line(img, p1, p2, cv::Scalar(200, 200, 200), 2);
+    }
+
+    // 3. 진한 색상으로 실제 추종 경로(Tracked) 그리기 (차량 폴리곤 포함)
+    for (size_t i = 1; i < tracked_path.size(); ++i) {
+        int p1x = occ_map.WorldXToXi(tracked_path[i - 1].x);
+        int p1y = occ_map.WorldYToYi(tracked_path[i - 1].y);
+        double p1t = tracked_path[i - 1].theta;
+
+        // // 실제 이동한 궤적 선 (파란색 등 눈에 띄는 색상)
+        // int p2x = occ_map.WorldXToXi(tracked_path[i].x);
+        // int p2y = occ_map.WorldYToYi(tracked_path[i].y);
+        // cv::line(img, 
+        //          cv::Point(p1x * cell_size, p1y * cell_size), 
+        //          cv::Point(p2x * cell_size, p2y * cell_size), 
+        //          Color::Blue, 3);
+
+        // 로봇의 실제 헤딩을 반영한 박스 그리기
+        drawVehicle(img,
+            p1x * cell_size,
+            p1y * cell_size,
+            p1t,
+            (r_length / resolution) * cell_size,
+            (r_width / resolution) * cell_size,
+            Color::Red); // 차량 모드에 따라 색상 분기 가능
+    }
+
+    // 4. 이미지 저장
+    fs::path dir("/home/uj");
+    fs::path name = title + "_tracking.png";
+    fs::path path_img = dir / name;
+    cv::imwrite(path_img.string(), img);
+    std::cout << "추종 결과 시각화 완료: " << path_img.string() << std::endl;
+}
 
 ///////////////////////////////////////////////////
 ///////////////// ROS2 VISUALIZE //////////////////

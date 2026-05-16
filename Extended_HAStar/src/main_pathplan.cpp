@@ -14,8 +14,8 @@ int main() {
     // [meter unit]
     double map_height = 30.0;
     double map_width = 60.0;
-    double resolution = 1.0;
-    double sx = 2.0; double sy = 2.0; double stheta = 1.0 * M_PI; int sgear = 0.0; VehicleMode smode = VehicleMode::BicycleMode;
+    double resolution = 0.2; //1.0;
+    double sx = 5.0; double sy = 2.0; double stheta = 1.0 * M_PI; int sgear = 0.0; VehicleMode smode = VehicleMode::BicycleMode;
     double gx = 25.0; double gy = 24.0; double gtheta = 1.0 * M_PI;
     //double gx = 35.0; double gy = 8.0; double gtheta = 1.0 * M_PI;
     //double gx = 59.0; double gy = 29.0; double gtheta = 1.0 * M_PI;
@@ -57,7 +57,7 @@ int main() {
 
     // 1. System & Mode Settings
     planner_w.is_standalone = true;         // for save result .png
-    planner_w.use_guide_heuristic = true;    // guide_heuristic or dij_rs_heuristic
+    planner_w.use_guide_heuristic = false;    // guide_heuristic or dij_rs_heuristic
 
     // 2. Cost Map Settings
     planner_w.costmap_type = 0; // 0: Voronoi, 1: Exponential, 2: Sigmoid, 3: Nav2
@@ -132,8 +132,8 @@ int main() {
         
         // vehicle mode 등록
         hastar.registVehicleMode(std::move(bicycle));
-        hastar.registVehicleMode(std::move(crab));
-        hastar.registVehicleMode(std::move(spin));
+        // hastar.registVehicleMode(std::move(crab));
+        // hastar.registVehicleMode(std::move(spin));
 
         // Global Hybrid AStar Path
         //std::vector<std::pair<State, VehicleMode>> g_path;

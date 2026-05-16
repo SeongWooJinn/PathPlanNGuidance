@@ -67,7 +67,7 @@ void IVehicleMode::setMapResolution(double res)
 { 
     map_resolution_ = res; 
     // 충돌 검사 간격은 해상도의 절반
-    sample_ds_ = map_resolution_ * 0.5; 
+    sample_ds_ = map_resolution_ * 0.5;
     // 가지 길이는 로봇 길이와 비슷하거나 살짝 길게
     step_len_ = robot_length_ * 2.0;
 }

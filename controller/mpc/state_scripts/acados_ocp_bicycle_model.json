@@ -75,7 +75,7 @@
             -1.0
         ],
         "lbx": [
-            -1.3
+            -1.5
         ],
         "lbx_0": [
             0.0,
@@ -112,7 +112,7 @@
             1.0
         ],
         "ubx": [
-            1.3
+            1.5
         ],
         "ubx_0": [
             0.0,
@@ -476,7 +476,7 @@
         "bicycle_model_cost/bicycle_model_cost_y_e_fun_jac_ut_xt.c",
         "bicycle_model_cost/bicycle_model_cost_y_e_hess.c"
     ],
-    "hash": "c23b36f9ac7abdac71a21f220b322b79",
+    "hash": "de0ad87194ee090d0dbba071b229ca15",
     "model": {
         "con_h_expr": [],
         "con_h_expr_0": [],

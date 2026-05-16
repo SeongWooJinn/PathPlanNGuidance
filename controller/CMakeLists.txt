@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ROS 2용 빌드 도구 (추후 colcon build를 위해 유지)
 find_package(ament_cmake REQUIRED) 
+find_package(OpenCV REQUIRED)
 
 ############### START : Make main standalone exe file ###############
 
@@ -26,6 +27,10 @@ include_directories(
     mpc/state_scripts/c_generated_bicycle_model
     mpc/state_scripts/c_generated_parallel_model
     mpc/state_scripts/c_generated_spin_model
+
+    ############ Extended_HAStar Folder ############
+    # for structs
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/include
 )
 
 # 3. acados 기본 라이브러리 폴더 경로 지정
@@ -51,9 +56,13 @@ set_target_properties(acados_spin_lib PROPERTIES
 add_executable(run_mpc
     mpc/src/main_mpc.cpp   
     mpc/include/mpc_controller.h
-    mpc/include/structs.h
+    mpc/include/structs_mpc.h
     mpc/include/vehicles_model.h
     base_controller.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/src/visualize.cpp    # for visualize
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/src/maps.cpp    # for visualize
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/include/visualize.h    # for visualize
+    ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/include/maps.h    # for visualize
 )
 
 # 6. 필수 라이브러리 풀세트 링크 (acados 코어 + 수학 엔진 + 모델 라이브러리)
@@ -65,6 +74,7 @@ target_link_libraries(run_mpc
     acados_bicycle_lib
     acados_parallel_lib
     acados_spin_lib
+    ${OpenCV_LIBS}
 )
 
 # 7. Precompile Header Setting (빌드 속도 향상)
@@ -76,6 +86,7 @@ target_precompile_headers(run_mpc
     <filesystem>
     <fstream>
     <algorithm>
+    <opencv2/opencv.hpp>
     # "mpc/include/structs.h"
     # "mpc/include/mpc_controller.h"
     # "mpc/include/vehicles_model.h"
