@@ -17,7 +17,6 @@ set(ACADOS_DIR "/home/uj/acados")
 # 2. acados 기본 헤더 및 생성된 C 모델 헤더 경로 통합 추가
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
-    # ${CMAKE_CURRENT_SOURCE_DIR}/base_controller.h  # base_controller 경로 반영
     mpc/include
     ${ACADOS_DIR}/include
     ${ACADOS_DIR}/include/acados
@@ -57,8 +56,9 @@ add_executable(run_mpc
     mpc/src/main_mpc.cpp   
     mpc/include/mpc_controller.h
     mpc/include/structs_mpc.h
-    mpc/include/vehicles_model.h
+    mpc/include/vehicles_mpc.h
     base_controller.h
+    velocity_planner.h
     ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/src/visualize.cpp    # for visualize
     ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/src/maps.cpp    # for visualize
     ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/include/visualize.h    # for visualize
@@ -87,9 +87,11 @@ target_precompile_headers(run_mpc
     <fstream>
     <algorithm>
     <opencv2/opencv.hpp>
+    "base_controller.h"
+    "velocity_planner.h"
     # "mpc/include/structs.h"
     # "mpc/include/mpc_controller.h"
-    # "mpc/include/vehicles_model.h"
+    # "mpc/include/vehicles_mpc.h"
 )
 ############### END : Make main standalone exe file ###############
 

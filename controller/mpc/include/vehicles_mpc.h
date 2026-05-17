@@ -1,5 +1,5 @@
-#ifndef VEHICLES_MODEL_H
-#define VEHICLES_MODEL_H
+#ifndef VEHICLES_MPC_H
+#define VEHICLES_MPC_H
 
 #include "mpc_controller.h"
 
@@ -17,14 +17,6 @@
 
 // #define NP_GLOBAL   BICYCLE_MODEL_NP_GLOBAL
 
-
-// struct RobotState {
-//     double x, y, theta, v, delta;
-// };
-
-// struct ControlInput {
-//     double a, delta_dot;
-// };
 
 
 //////////////////////////////////////////////////
@@ -107,7 +99,7 @@ private:
 
 public:
     ParallelMode() {
-        N_ = PARALLEL_MODEL_N;   // 헤더에 정의된 값
+        N_ = PARALLEL_MODEL_N;   // 헤더에 정의된 값 
         NX_ = PARALLEL_MODEL_NX;
         NU_ = PARALLEL_MODEL_NU;
         NBX0_ = PARALLEL_MODEL_NBX0;
@@ -120,6 +112,8 @@ public:
     bool initialize() override {
         capsule_ = parallel_model_acados_create_capsule();
         // int status = spin_model_acados_create_with_discretization(capsule_, N_, nullptr);
+
+        std::cout << "N_, PARALLEL_MODEL_N : " << N_ << ", " << PARALLEL_MODEL_N << std::endl;
         status_ = parallel_model_acados_create_with_discretization(capsule_, N_, nullptr);
         
         if (status_ != 0) return false;

@@ -38,7 +38,9 @@ int main() {
     my_robot.ref_vel = 0.5;
     my_robot.sensor_fov = 2.0 * M_PI / 3.0;
     my_robot.delta_max = M_PI * 30.0 / 180.0; // rad
-    my_robot.alpha = 90.0 * M_PI / 180.0;    // actionset범위 조절 가능 
+    // my_robot.alpha = 90.0 * M_PI / 180.0;    // actionset범위 조절 가능 
+    // my_robot.beta = M_PI;     // 180도 회전 [-PI/2, PI/2]  
+    my_robot.alpha = 20.0 * M_PI / 180.0;    // actionset범위 조절 가능 
     my_robot.beta = M_PI;     // 180도 회전 [-PI/2, PI/2]  
 
     // // ROBOT2 : TURTLEBOT3 WAFFLE
@@ -132,7 +134,7 @@ int main() {
         
         // vehicle mode 등록
         hastar.registVehicleMode(std::move(bicycle));
-        // hastar.registVehicleMode(std::move(crab));
+        hastar.registVehicleMode(std::move(crab));
         // hastar.registVehicleMode(std::move(spin));
 
         // Global Hybrid AStar Path

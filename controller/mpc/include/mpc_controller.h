@@ -4,6 +4,7 @@
 #include "base_controller.h"
 #include "acados_c/ocp_nlp_interface.h"
 #include "structs_mpc.h"  
+#include "velocity_planner.h"
 
 // BaseController를 상속
 class MpcController : public BaseController 
@@ -38,7 +39,8 @@ protected:
 
 public:
     virtual ~MpcController() = default;
-
+    std::vector<ReferenceTraj> getRefTrajectoryData() {return ref_traj_;}
+    
 ///////////// 공통 로직 (BaseController의 가상 함수 구현) /////////////
     bool getRefTraj(
         std::vector<State>& global_path, double v_max,
@@ -56,6 +58,12 @@ public:
             spatial_ref[i].theta = global_path[i].theta;
             spatial_ref[i].delta = global_path[i].steering;
             spatial_ref[i].v = (global_path[i].gear == 0) ? v_max : -v_max;
+            spatial_ref[i].mode = global_path[i].vehicle;
+            // 모드 전환 지점에서는 v = 0
+            if (i > 0 && spatial_ref[i].mode != spatial_ref[i-1].mode) {
+                spatial_ref[i-1].v = 0;
+                spatial_ref[i].v = 0;
+            }
         }
 
         // 2. 곡률 기반 속도 제약 , a = v^2 / r
@@ -91,15 +99,13 @@ public:
         if (!ref_traj_.empty()) {
             // 궤적의 첫 번째 점을 차량의 실제 target 헤딩에 맞춤 (-pi 와 +pi 점프 억제)
             double diff0 = ref_traj_[0].theta - global_path[0].theta;
-            while (diff0 > M_PI)  diff0 -= 2.0 * M_PI;
-            while (diff0 < -M_PI) diff0 += 2.0 * M_PI;
-            ref_traj_[0].theta = global_path[0].theta + diff0;
+            double diff0_norm = normalizeAngle(diff0);
+            ref_traj_[0].theta = global_path[0].theta + diff0_norm;
 
             for (size_t i = 1; i < ref_traj_.size(); ++i) {
                 double diff = ref_traj_[i].theta - ref_traj_[i-1].theta;
-                while (diff > M_PI)  diff -= 2.0 * M_PI;
-                while (diff < -M_PI) diff += 2.0 * M_PI;
-                ref_traj_[i].theta = ref_traj_[i-1].theta + diff;
+                double diff_norm = normalizeAngle(diff);
+                ref_traj_[i].theta = ref_traj_[i-1].theta + diff_norm;
             }
         }
         current_closest_idx_ = 0;
@@ -118,7 +124,7 @@ public:
     int updateSlidingWindow(const double* curr) override {
         if (ref_traj_.empty()) return -1;
 
-        // 이전 인덱스 기반으로 가장 가까운 점 탐색 (연산 최적화)
+        // 1. 이전 인덱스 기반으로 추종 궤적 내 가장 가까운 점 탐색 (연산 최적화)
         // 인덱스를 찾는 범위
         double min_dist = 1e10;
         int search_limit = std::min(current_closest_idx_ + 100, (int)ref_traj_.size());
@@ -130,15 +136,39 @@ public:
             }
         }
 
+        // 2. 예측 호라이즌 내 추종 궤적(yref_window) 찾기
         // 내부 버퍼를 사용하여 슬라이딩 윈도우 생성
         std::vector<ReferenceTraj> yref_window(N_);
+
+        VehicleMode curr_mode = ref_traj_[current_closest_idx_].mode;
+        int transient_idx = -1;
         for (int i = 0; i < N_; ++i) {
-            int target_idx = std::min(current_closest_idx_ + i, (int)ref_traj_.size() - 1);
-            yref_window[i] = ref_traj_[target_idx];
+            int idx = std::min(current_closest_idx_ + i, (int)ref_traj_.size() - 1);
+            // 모드 전환 지점 인덱스 찾기
+            if (ref_traj_[idx].mode != ref_traj_[current_closest_idx_].mode) {
+                transient_idx = idx;
+                // 현재 인덱스보다 작아지진 않도록 방어
+                if (transient_idx < current_closest_idx_) transient_idx = current_closest_idx_;
+            }
+            // 모드전환 지점이 있으면 그 이후 값들은 모두 정지 상태
+            if (transient_idx != -1) {
+                yref_window[i] = ref_traj_[transient_idx];
+                yref_window[i].v = 0.0;
+                yref_window[i].a = 0.0;
+                yref_window[i].delta_dot = 0.0;
+            }
+            else
+                yref_window[i] = ref_traj_[idx];
         }
+        // for (int i = 0; i < N_; ++i) {
+        //     int target_idx = std::min(current_closest_idx_ + i, (int)ref_traj_.size() - 1);
+        //     yref_window[i] = ref_traj_[target_idx];
+        // }
 
         ReferenceTrajTerminal yref_e;
-        int terminal_idx = std::min(current_closest_idx_ + N_, (int)ref_traj_.size() - 1);
+        // int terminal_idx = std::min(current_closest_idx_ + N_, (int)ref_traj_.size() - 1);
+        // 모드 전환 지점이 있으면 그 지점을 종점으로
+        int terminal_idx = (transient_idx != -1) ? transient_idx : std::min(current_closest_idx_ + N_, (int)ref_traj_.size() - 1);
         yref_e.x = ref_traj_[terminal_idx].x;
         yref_e.y = ref_traj_[terminal_idx].y;
         yref_e.theta = ref_traj_[terminal_idx].theta;

@@ -86,7 +86,7 @@ def generate_mpc(model):
         ocp.constraints.ubx = np.array([ 1.57])
         ocp.constraints.idxbx = np.array([4]) # delta(4번째 인덱스)
     elif (model.name == 'spin_model'):
-        # 상태 제약 (예: 최대 omega(각속도) 제한 -75도 ~ 75도)
+        # 상태 제약 (예: 최대 omega(각속도) 제한)
         # idxbx : 상태 변수 index
         # reference : nav2_params.yaml -> ExtendedHybridAStar
         ocp.constraints.lbx = np.array([-0.35])  # = vx_min
@@ -102,7 +102,7 @@ def generate_mpc(model):
     ocp.solver_options.integrator_type = 'ERK'
     # ocp.solver_options.nlp_solver_type = 'SQP_RTI'    # 실시간 제어에 매우 빠름, RTI option(1회 연산)
     ocp.solver_options.nlp_solver_type = 'SQP'          # Full SQP(반복 연산)
-    ocp.solver_options.nlp_solver_max_iter = 100         # Full SQP일때 솔버가 최대 50번까지 반복해서 정답을 찾도록 허용
+    ocp.solver_options.nlp_solver_max_iter = 100         # Full SQP일때 솔버가 최대 n번까지 반복해서 정답을 찾도록 허용
     
     AcadosOcpSolver(ocp, json_file=f'acados_ocp_{model.name}.json')
     print("성공적으로 C 코드가 생성되었습니다!")
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     # models = [export_bicycle_model(), export_parallel_model(), export_spin_model()]
     # for m in models:
     #     generate_mpc(m)
-    generate_mpc(export_bicycle_model())
+    generate_mpc(export_parallel_model())
 
 
 # ############ 목표 궤적 예제 코드 ############
