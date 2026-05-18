@@ -40,6 +40,8 @@ protected:
 public:
     virtual ~MpcController() = default;
     std::vector<ReferenceTraj> getRefTrajectoryData() {return ref_traj_;}
+    void setRefTrajectoryData(const std::vector<ReferenceTraj>& traj) { ref_traj_ = traj;}
+    void setClosestIdx(int idx) {current_closest_idx_ = idx;}
     
 ///////////// 공통 로직 (BaseController의 가상 함수 구현) /////////////
     bool getRefTraj(
@@ -135,6 +137,10 @@ public:
                 current_closest_idx_ = i;
             }
         }
+        // if (ref_traj_[current_closest_idx_].mode == VehicleMode::SpinMode)
+        // {
+        //     current_closest_idx_ = std::min(current_closest_idx_ + 1, (int)ref_traj_.size());
+        // }
 
         // 2. 예측 호라이즌 내 추종 궤적(yref_window) 찾기
         // 내부 버퍼를 사용하여 슬라이딩 윈도우 생성
@@ -145,7 +151,7 @@ public:
         for (int i = 0; i < N_; ++i) {
             int idx = std::min(current_closest_idx_ + i, (int)ref_traj_.size() - 1);
             // 모드 전환 지점 인덱스 찾기
-            if (ref_traj_[idx].mode != ref_traj_[current_closest_idx_].mode) {
+            if (ref_traj_[idx].mode != curr_mode) {
                 transient_idx = idx;
                 // 현재 인덱스보다 작아지진 않도록 방어
                 if (transient_idx < current_closest_idx_) transient_idx = current_closest_idx_;

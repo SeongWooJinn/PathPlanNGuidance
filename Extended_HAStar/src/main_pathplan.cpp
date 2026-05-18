@@ -16,7 +16,7 @@ int main() {
     double map_width = 60.0;
     double resolution = 0.2; //1.0;
     double sx = 5.0; double sy = 2.0; double stheta = 1.0 * M_PI; int sgear = 0.0; VehicleMode smode = VehicleMode::BicycleMode;
-    double gx = 25.0; double gy = 24.0; double gtheta = 1.0 * M_PI;
+    double gx = 50.0; double gy = 15.0; double gtheta = 1.0 * M_PI;
     //double gx = 35.0; double gy = 8.0; double gtheta = 1.0 * M_PI;
     //double gx = 59.0; double gy = 29.0; double gtheta = 1.0 * M_PI;
 
@@ -41,7 +41,7 @@ int main() {
     // my_robot.alpha = 90.0 * M_PI / 180.0;    // actionset범위 조절 가능 
     // my_robot.beta = M_PI;     // 180도 회전 [-PI/2, PI/2]  
     my_robot.alpha = 20.0 * M_PI / 180.0;    // actionset범위 조절 가능 
-    my_robot.beta = M_PI;     // 180도 회전 [-PI/2, PI/2]  
+    my_robot.beta = 20.0 * M_PI / 180.0;     // 180도 회전 [-PI/2, PI/2]  
 
     // // ROBOT2 : TURTLEBOT3 WAFFLE
     // double WB = 0.14;
@@ -135,7 +135,7 @@ int main() {
         // vehicle mode 등록
         hastar.registVehicleMode(std::move(bicycle));
         hastar.registVehicleMode(std::move(crab));
-        // hastar.registVehicleMode(std::move(spin));
+        hastar.registVehicleMode(std::move(spin));
 
         // Global Hybrid AStar Path
         //std::vector<std::pair<State, VehicleMode>> g_path;
@@ -149,7 +149,14 @@ int main() {
             std::cout << "Time for Path Search : " << elapsed.count() << " sec" << std::endl;
             g_path = hastar.reconstructPath();
             std::cout << "Total Distance : " << hastar.getTotalDistance(g_path) << std::endl;
-            visualize_hybridastar_path(g_path, gt_map, 10, my_robot.robot_length, my_robot.robot_width, "Global Hybrid A* path in GT map", resolution);
+            visualize_hybridastar_path(
+                g_path, 
+                gt_map, 
+                10, 
+                my_robot.robot_length, 
+                my_robot.robot_width, 
+                "Global Hybrid A* path in GT map", 
+                resolution);
             // hastar.visualize_searched_segs(sx, sy, gx, gy, 10, "State Expansions");
         }
 

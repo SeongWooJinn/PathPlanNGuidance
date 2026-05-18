@@ -30,9 +30,10 @@ int main()
     
     // 글로벌 궤적 포인터 (각 컨트롤러가 동일한 ref_traj_를 공유)
     const std::vector<ReferenceTraj>& resampled_traj = mpc_bi.getRefTrajectoryData();
+    mpc_parallel.setRefTrajectoryData(resampled_traj);
+    mpc_spin.setRefTrajectoryData(resampled_traj);
 
     std::cout << "1. reference trajecotory load" << std::endl;
-    // std::cout << "reference trajecotory : " << resampled_traj.size() << std::endl;
     
     // 3. 로봇 초기 위치 (테스트용, g_path의 시작점)
     double current_x[5] = {
@@ -52,13 +53,14 @@ int main()
         bool solve_success = false;
         if (curr_mode == VehicleMode::BicycleMode)
         {
+            // 각 모드별 인덱스 위치 동기화
+            mpc_bi.setClosestIdx(closest_idx);
             // 도착여부 판단
             if (mpc_bi.isGuidanceFinished(current_x)) break;
             // 현재 상태를 솔버에 제약 조건으로 주입
             mpc_bi.setInitialState(current_x, current_x);
             // 현재 위치를 넘겨주면 내부에서 타겟 인덱스 탐색 및 윈도우 주입 자동 처리
             closest_idx = mpc_bi.updateSlidingWindow(current_x);
-
             solve_success = mpc_bi.solve();
             // 다음 스텝의 예측 상태를 현재 위치로 누적
             if (solve_success) 
@@ -66,6 +68,8 @@ int main()
         }
         else if (curr_mode == VehicleMode::ParallelMode)
         {
+            // 각 모드별 인덱스 위치 동기화
+            mpc_parallel.setClosestIdx(closest_idx);
             // 도착여부 판단
             if (mpc_parallel.isGuidanceFinished(current_x)) break;
             // 현재 상태를 솔버에 제약 조건으로 주입
@@ -80,6 +84,8 @@ int main()
         }
         else    // spin mode
         {
+            // 각 모드별 인덱스 위치 동기화
+            mpc_spin.setClosestIdx(closest_idx);
             // 도착여부 판단
             if (mpc_spin.isGuidanceFinished(current_x)) break;
             // 현재 상태를 솔버에 제약 조건으로 주입
@@ -103,6 +109,7 @@ int main()
         current_state.x = current_x[0];
         current_state.y = current_x[1];
         current_state.theta = current_x[2];
+        current_state.vehicle = curr_mode;
         track_path.push_back(current_state);
 
         std::cout << "추종 인덱스: " << closest_idx 
@@ -119,7 +126,7 @@ int main()
     double cell_size = 10.0;     // 픽셀 비율 
     double r_length = 1.0;       // 로봇 길이
     double r_width = 0.6;        // 로봇 폭
-    double resolution = 0.5;     // 맵 해상도
+    double resolution = 0.2;     // 맵 해상도
 
     double map_height = 30.0;
     double map_width = 60.0;
@@ -128,7 +135,7 @@ int main()
 
     OccMap gt(rows, cols, resolution);
     double sx = 5.0; double sy = 2.0; 
-    double gx = 25.0; double gy = 24.0;
+    double gx = 50.0; double gy = 15.0;
     gt.generate_example_map_v3(0.0, sx, sy, gx, gy);
     GridMap<int>& gt_map = gt.getOccMap();
 

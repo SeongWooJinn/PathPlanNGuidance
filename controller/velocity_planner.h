@@ -90,6 +90,7 @@ inline ReferenceTraj hermiteSplineinterpolateState(
 {
     // pt1 -> pt2
     ReferenceTraj new_pt;
+    new_pt.obs = 0.0;
     new_pt.mode = pt2.mode;
 
     // parallel mode: 헤딩 고정, 조향각 고정, 직선 대각선 이동
@@ -217,10 +218,26 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
         // 4. x, y, theta, delta, v 보간!
         ReferenceTraj new_pt = hermiteSplineinterpolateState(spatial_path[idx], spatial_path[idx + 1], r);
 
-        // 
-        if (prev_pt.mode != new_pt.mode) {
-            
-        }
+        // // 모드 다르면 switching time 적용(my_robot.switch_time in hastar)
+        // // switching time 동안 정지함
+        // double switching_time = 1.0;    // in hastar
+        // if (prev_pt.mode != new_pt.mode) {
+        //     int buffer_steps = switching_time / dt;
+        //     ReferenceTraj align_pt = prev_pt; 
+        //     align_pt.v = 0.0;
+        //     align_pt.a = 0.0;
+        //     align_pt.mode = new_pt.mode;
+
+        //     double start_delta = prev_pt.delta;
+        //     double end_delta = new_pt.delta;
+
+        //     // 바퀴만 돌리도록 궤적 생성
+        //     for (size_t i = 1; i <= buffer_steps; ++i) {
+        //         align_pt.delta = start_delta + (end_delta - start_delta) * static_cast<double>(i / buffer_steps);
+        //         align_pt.delta_dot = (end_delta - start_delta) / (buffer_steps * dt);
+        //         temporal_path.push_back(align_pt);
+        //     }
+        // }
         // 5. 미분값 추출 (a, delta_dot)
         new_pt.a = (new_pt.v - prev_pt.v) / dt;
         // new_pt.a = std::clamp(new_pt.a, -MAX_DECEL, MAX_ACCEL);
@@ -228,7 +245,6 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
         // 조향각속도: 각도 랩어라운드(Wrap-around)를 고려하여 차이 계산
         double diff_delta = new_pt.delta - prev_pt.delta;
         new_pt.delta_dot = diff_delta / dt;
-
 
         temporal_path.push_back(new_pt);
     }

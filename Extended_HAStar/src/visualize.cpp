@@ -87,15 +87,6 @@ void visualize_hybridastar_path(
 	// 경로 시각화 (빨간 선)
 	cv::Scalar mode_color;
 	for (size_t i = 1; i < path.size(); ++i) {
-		// double p1x = path[i - 1].x;
-		// double p1y = path[i - 1].y;
-		// double p1t = path[i - 1].theta;
-		// VehicleMode p1mode = path[i - 1].vehicle;
-
-		// double p2x = path[i].x;
-		// double p2y = path[i].y;
-		// double p2t = path[i].theta;
-		// VehicleMode p2mode = path[i].vehicle;
 
 		int p1x = occ_map.WorldXToXi(path[i - 1].x);
 		int p1y = occ_map.WorldYToYi(path[i - 1].y);
@@ -145,25 +136,25 @@ void visualize_hybridastar_path(
 		(r_width / resolution) * cell_size,
 		mode_color);
 
-	int startx = occ_map.WorldXToXi(path[0].x);
-	int starty = occ_map.WorldYToYi(path[0].y);
-	int goalx = occ_map.WorldXToXi(path[path.size() - 1].x);
-	int goaly = occ_map.WorldYToYi(path[path.size() - 1].y);
-	// double startx = (path[0].x / resolution), starty = (path[0].y / resolution);
-	// double goalx = (path[path.size() - 1].x / resolution), goaly = (path[path.size() - 1].y / resolution);
-	cv::Point start(startx * cell_size, starty * cell_size);
-	cv::Point goal(goalx * cell_size, goaly * cell_size);
+	// int startx = occ_map.WorldXToXi(path[0].x);
+	// int starty = occ_map.WorldYToYi(path[0].y);
+	// int goalx = occ_map.WorldXToXi(path[path.size() - 1].x);
+	// int goaly = occ_map.WorldYToYi(path[path.size() - 1].y);
+	// // double startx = (path[0].x / resolution), starty = (path[0].y / resolution);
+	// // double goalx = (path[path.size() - 1].x / resolution), goaly = (path[path.size() - 1].y / resolution);
+	// cv::Point start(startx * cell_size, starty * cell_size);
+	// cv::Point goal(goalx * cell_size, goaly * cell_size);
 
-	cv::circle(img, start, cell_size / 10, start_color, cv::FILLED);
-	cv::circle(img, goal, cell_size / 10, goal_color, cv::FILLED);
+	// cv::circle(img, start, cell_size / 10, start_color, cv::FILLED);
+	// cv::circle(img, goal, cell_size / 10, goal_color, cv::FILLED);
 
-	// legend
-	cv::circle(img, cv::Point(legend_x0 + 10, legend_y0 + 10), 1, start_color, cv::FILLED);
-	cv::putText(img, "S", cv::Point(legend_x0 + 30, legend_y0 + 15),
-		cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
-	cv::circle(img, cv::Point(legend_x0 + 10, legend_y0 + 10 + step), 1, goal_color, cv::FILLED);
-	cv::putText(img, "G", cv::Point(legend_x0 + 30, legend_y0 + 15 + step),
-		cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
+	// // legend
+	// cv::circle(img, cv::Point(legend_x0 + 10, legend_y0 + 10), 1, start_color, cv::FILLED);
+	// cv::putText(img, "S", cv::Point(legend_x0 + 30, legend_y0 + 15),
+	// 	cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
+	// cv::circle(img, cv::Point(legend_x0 + 10, legend_y0 + 10 + step), 1, goal_color, cv::FILLED);
+	// cv::putText(img, "G", cv::Point(legend_x0 + 30, legend_y0 + 15 + step),
+	// 	cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
 
 	// cv::imshow(title, img);
 	// cv::waitKey(0);
@@ -333,10 +324,20 @@ void visualize_tracking_performance(
     }
 
     // 3. 진한 색상으로 실제 추종 경로(Tracked) 그리기 (차량 폴리곤 포함)
+	cv::Scalar mode_color;
     for (size_t i = 1; i < tracked_path.size(); ++i) {
         int p1x = occ_map.WorldXToXi(tracked_path[i - 1].x);
         int p1y = occ_map.WorldYToYi(tracked_path[i - 1].y);
         double p1t = tracked_path[i - 1].theta;
+		VehicleMode p1mode = tracked_path[i-1].vehicle;
+
+		// p1의 vehiclemode에 따라 색상 결정
+		if (p1mode == VehicleMode::BicycleMode)
+			mode_color = Color::Red;
+		else if (p1mode == VehicleMode::ParallelMode)
+			mode_color = Color::Green;
+		else
+			mode_color = Color::Blue;
 
         // // 실제 이동한 궤적 선 (파란색 등 눈에 띄는 색상)
         // int p2x = occ_map.WorldXToXi(tracked_path[i].x);
@@ -353,8 +354,17 @@ void visualize_tracking_performance(
             p1t,
             (r_length / resolution) * cell_size,
             (r_width / resolution) * cell_size,
-            Color::Red); // 차량 모드에 따라 색상 분기 가능
+            mode_color); // 차량 모드에 따라 색상 분기 가능
     }
+	// goal point triangle
+	drawVehicle(img,
+		occ_map.WorldXToXi(tracked_path[tracked_path.size() - 1].x) * cell_size,
+		occ_map.WorldYToYi(tracked_path[tracked_path.size() - 1].y) * cell_size,
+		tracked_path[tracked_path.size() - 1].theta,
+		(r_length / resolution) * cell_size,
+		(r_width / resolution) * cell_size,
+		mode_color);
+
 
     // 4. 이미지 저장
     fs::path dir("/home/uj");
