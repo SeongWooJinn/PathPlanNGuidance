@@ -14,8 +14,8 @@ def generate_mpc(model):
     ocp.code_export_directory = f'c_generated_{model.name}'
 
     # 예측 호라이즌 설정 (예: 1초 앞을 0.05초 간격으로 20번 쪼개서 예측)
-    N = 50 #20
-    Tf = 5.0 #1.0
+    N = 150 #50
+    Tf = 5.0 #5.0
     # ocp.dims.N = N
     ocp.solver_options.N_horizon = N
     ocp.solver_options.tf = Tf
@@ -114,7 +114,9 @@ if __name__ == '__main__':
     # models = [export_bicycle_model(), export_parallel_model(), export_spin_model()]
     # for m in models:
     #     generate_mpc(m)
+    generate_mpc(export_bicycle_model())
     generate_mpc(export_parallel_model())
+    generate_mpc(export_spin_model())
 
 
 # ############ 목표 궤적 예제 코드 ############

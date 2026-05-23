@@ -73,7 +73,7 @@ int spin_model_acados_sim_create(spin_model_sim_solver_capsule * capsule)
     const int np = SPIN_MODEL_NP;
     bool tmp_bool;
 
-    double Tsim = 0.1;
+    double Tsim = 0.03333333333333333;
 
     capsule->acados_sim_mem = NULL;
 

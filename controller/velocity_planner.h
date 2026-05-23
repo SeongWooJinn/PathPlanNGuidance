@@ -164,7 +164,7 @@ inline ReferenceTraj hermiteSplineinterpolateState(
 
     new_pt.delta = (1.0 - r) * pt1.delta + r * pt2.delta;
     new_pt.v = (1.0 - r) * pt1.v + r * pt2.v;
-    
+
     return new_pt;
 }
 
@@ -178,11 +178,30 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
     // 1. 공간 경로의 각 점까지의 누적 거리(s) 계산
     std::vector<double> s_spatial(spatial_path.size(), 0.0);
     for (size_t i = 1; i < spatial_path.size(); ++i) {
-        s_spatial[i] = s_spatial[i-1] + std::hypot(
-            spatial_path[i].x - spatial_path[i-1].x, 
-            spatial_path[i].y - spatial_path[i-1].y
-        );
+        double dx = spatial_path[i].x - spatial_path[i-1].x;
+        double dy = spatial_path[i].y - spatial_path[i-1].y;
+        double ds = std::hypot(dx, dy);
+
+        // 🌟 핵심 방어 로직: 제자리 회전(Spin) 등 물리적 이동 거리가 0일 때 '가상 거리' 부여
+        if (ds < 1e-3) {
+            // 헤딩 변화량을 거리로 환산 (1라디안 회전을 1m 전진과 동일한 비율로 취급)
+            double dtheta = std::abs(normalizeAngle(spatial_path[i].theta - spatial_path[i-1].theta));
+            if (dtheta > 1e-3) {
+                ds = dtheta * 1.0; 
+            } else {
+                ds = 0.1; // 단순 모드 변경이나 기어 변속 시 제자리에 대기할 시간(버퍼) 확보
+            }
+        }
+        s_spatial[i] = s_spatial[i-1] + ds;
     }
+    // // 1. 공간 경로의 각 점까지의 누적 거리(s) 계산
+    // std::vector<double> s_spatial(spatial_path.size(), 0.0);
+    // for (size_t i = 1; i < spatial_path.size(); ++i) {
+    //     s_spatial[i] = s_spatial[i-1] + std::hypot(
+    //         spatial_path[i].x - spatial_path[i-1].x, 
+    //         spatial_path[i].y - spatial_path[i-1].y
+    //     );
+    // }
     double total_distance = s_spatial.back();
 
     // 2. 초기점(t=0) 세팅
@@ -237,6 +256,8 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
         //         align_pt.delta_dot = (end_delta - start_delta) / (buffer_steps * dt);
         //         temporal_path.push_back(align_pt);
         //     }
+        //     // 버퍼가 끝난 시점부터 다시 정상 궤적 추종을 이어가기 위해 prev_pt 갱신
+        //     prev_pt = temporal_path.back();
         // }
         // 5. 미분값 추출 (a, delta_dot)
         new_pt.a = (new_pt.v - prev_pt.v) / dt;

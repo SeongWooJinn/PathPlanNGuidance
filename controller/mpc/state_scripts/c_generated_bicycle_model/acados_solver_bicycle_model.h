@@ -64,7 +64,7 @@
 #define BICYCLE_MODEL_NY0    8
 #define BICYCLE_MODEL_NY     8
 #define BICYCLE_MODEL_NYN    5
-#define BICYCLE_MODEL_N      50
+#define BICYCLE_MODEL_N      150
 #define BICYCLE_MODEL_NH     0
 #define BICYCLE_MODEL_NHN    0
 #define BICYCLE_MODEL_NH0    0

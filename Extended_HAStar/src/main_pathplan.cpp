@@ -15,8 +15,8 @@ int main() {
     double map_height = 30.0;
     double map_width = 60.0;
     double resolution = 0.2; //1.0;
-    double sx = 5.0; double sy = 2.0; double stheta = 1.0 * M_PI; int sgear = 0.0; VehicleMode smode = VehicleMode::BicycleMode;
-    double gx = 50.0; double gy = 15.0; double gtheta = 1.0 * M_PI;
+    double sx = 5.0; double sy = 2.0; double stheta = 0.5 * M_PI; int sgear = 0.0; VehicleMode smode = VehicleMode::BicycleMode;
+    double gx = 24.0; double gy = 25.0; double gtheta = 1.0 * M_PI;
     //double gx = 35.0; double gy = 8.0; double gtheta = 1.0 * M_PI;
     //double gx = 59.0; double gy = 29.0; double gtheta = 1.0 * M_PI;
 

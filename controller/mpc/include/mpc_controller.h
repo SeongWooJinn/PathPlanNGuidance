@@ -68,6 +68,9 @@ public:
             }
         }
 
+        // for (const auto& gp : spatial_ref)
+        //     std::cout << "RP : " << gp.mode << std::endl;
+
         // 2. 곡률 기반 속도 제약 , a = v^2 / r
         // 경로 중간에 있는 급커브나 U턴 구간에 대한 속도 제약을 위해 수행
         for (size_t i = 0; i < spatial_ref.size() - 1; ++i)
@@ -123,20 +126,27 @@ public:
         return !ref_traj_.empty();
     }
 
-    int updateSlidingWindow(const double* curr) override {
+    int updateSlidingWindow(const double* curr, VehicleMode& curr_mode, double min_d, double zero_v) override {
         if (ref_traj_.empty()) return -1;
 
         // 1. 이전 인덱스 기반으로 추종 궤적 내 가장 가까운 점 탐색 (연산 최적화)
-        // 인덱스를 찾는 범위
+        // 거리기반 인덱스 탐색
         double min_dist = 1e10;
+        int best_idx = current_closest_idx_;
         int search_limit = std::min(current_closest_idx_ + 100, (int)ref_traj_.size());
         for (int i = current_closest_idx_; i < search_limit; ++i) {
             double dist = calcDistance(curr[0], curr[1], ref_traj_[i].x, ref_traj_[i].y);
             if (dist < min_dist) {
                 min_dist = dist;
-                current_closest_idx_ = i;
+                best_idx = i;
             }
         }
+        // 속도가 매우 작고 거리변화도 거의 없으면 거리기반 인덱스 탐색 없이 무조건 인덱스 +1 
+        if (min_dist < min_d && std::abs(ref_traj_[current_closest_idx_].v) < zero_v) {
+            best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
+            // std::cout << "idx / mode : " << best_idx << " / " << curr_mode << std::endl;
+        }
+        current_closest_idx_ = best_idx;
         // if (ref_traj_[current_closest_idx_].mode == VehicleMode::SpinMode)
         // {
         //     current_closest_idx_ = std::min(current_closest_idx_ + 1, (int)ref_traj_.size());
@@ -146,13 +156,13 @@ public:
         // 내부 버퍼를 사용하여 슬라이딩 윈도우 생성
         std::vector<ReferenceTraj> yref_window(N_);
 
-        VehicleMode curr_mode = ref_traj_[current_closest_idx_].mode;
+        // VehicleMode curr_mode = ref_traj_[current_closest_idx_].mode;
         int transient_idx = -1;
         for (int i = 0; i < N_; ++i) {
             int idx = std::min(current_closest_idx_ + i, (int)ref_traj_.size() - 1);
-            // 모드 전환 지점 인덱스 찾기
-            if (ref_traj_[idx].mode != curr_mode) {
-                transient_idx = idx;
+            // 모드 변환지점 찾고, 그 직전 점의 위치와 헤딩으로 남은 윈도우를 모두 채움
+            if (transient_idx == -1 && ref_traj_[idx].mode != curr_mode) {
+                transient_idx = idx - 1;
                 // 현재 인덱스보다 작아지진 않도록 방어
                 if (transient_idx < current_closest_idx_) transient_idx = current_closest_idx_;
             }
