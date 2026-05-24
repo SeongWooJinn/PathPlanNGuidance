@@ -761,12 +761,15 @@ void parallel_model_acados_setup_nlp_in(parallel_model_solver_capsule* capsule, 
 
     // x
     int* idxbx = malloc(NBX * sizeof(int));
-    idxbx[0] = 4;
+    idxbx[0] = 3;
+    idxbx[1] = 4;
     double* lubx = calloc(2*NBX, sizeof(double));
     double* lbx = lubx;
     double* ubx = lubx + NBX;
-    lbx[0] = -1.57;
-    ubx[0] = 1.57;
+    lbx[0] = -0.6;
+    ubx[0] = 0.6;
+    lbx[1] = -1.57;
+    ubx[1] = 1.57;
 
     for (int i = 1; i < N; i++)
     {

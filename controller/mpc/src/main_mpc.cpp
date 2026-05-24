@@ -20,11 +20,11 @@ int main()
     // 제어 파라미터 세팅 (실제 차량 사양에 맞게 튜닝)
     // nav2_params.yaml controller server
     // 제동거리 고려해서 설정(d = v^2 / 2a)
-    double v_max = 0.5;        // 최대 허용 속도 (m/s), 
+    double v_max = 0.3;        // 최대 허용 속도 (m/s),generate_mpc의 v limit보다 작게 설정
     double a_lat_max = 0.2;    // 최대 횡가속도(구심 가속도) 한계 (커브길 감속용)
     double a_dec_mag = 0.1;    // 최대 감속도 크기 (양수로 입력, 브레이크 성능)
     double dt = 5.0 / 150.0;          // MPC 제어 주기 generate_mpc.py -> Tf / N
-    double zero_velocity_thres = dt * a_dec_mag;
+    double zero_velocity_thres = std::max(0.01, dt * a_dec_mag); //dt * a_dec_mag;
     double min_dist_thres = v_max * dt;
 
     // get resampled reference trajectory
@@ -67,6 +67,7 @@ int main()
             curr_mode != resampled_traj[closest_idx + 1].mode)
         {
             curr_mode = resampled_traj[closest_idx + 1].mode;
+            closest_idx += 1;       // modify
             std::cout << "mode change!! : " << resampled_traj[closest_idx].mode 
                       << " --> " << curr_mode << ", idx : " << closest_idx << std::endl;
         }

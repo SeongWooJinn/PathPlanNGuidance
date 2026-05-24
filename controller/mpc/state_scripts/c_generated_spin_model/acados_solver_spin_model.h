@@ -41,7 +41,7 @@
 #define SPIN_MODEL_NU     2
 #define SPIN_MODEL_NP     2
 #define SPIN_MODEL_NP_GLOBAL     0
-#define SPIN_MODEL_NBX    1
+#define SPIN_MODEL_NBX    2
 #define SPIN_MODEL_NBX0   5
 #define SPIN_MODEL_NBU    2
 #define SPIN_MODEL_NSBX   0

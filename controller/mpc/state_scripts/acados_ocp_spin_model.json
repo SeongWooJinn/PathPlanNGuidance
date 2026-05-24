@@ -39,6 +39,7 @@
             1
         ],
         "idxbx": [
+            3,
             4
         ],
         "idxbx_0": [
@@ -75,6 +76,7 @@
             -1.0
         ],
         "lbx": [
+            0.0,
             -0.35
         ],
         "lbx_0": [
@@ -112,6 +114,7 @@
             1.0
         ],
         "ubx": [
+            0.0,
             0.5
         ],
         "ubx_0": [
@@ -421,7 +424,7 @@
         "N": 150,
         "n_global_data": 0,
         "nbu": 2,
-        "nbx": 1,
+        "nbx": 2,
         "nbx_0": 5,
         "nbx_e": 0,
         "nbxe_0": 5,
@@ -476,7 +479,7 @@
         "spin_model_cost/spin_model_cost_y_e_fun_jac_ut_xt.c",
         "spin_model_cost/spin_model_cost_y_e_hess.c"
     ],
-    "hash": "0ab9d165e12a0c35be4654c5a4c2c45a",
+    "hash": "ed5b9676075d5e07653c9f3bdcad29e1",
     "model": {
         "con_h_expr": [],
         "con_h_expr_0": [],

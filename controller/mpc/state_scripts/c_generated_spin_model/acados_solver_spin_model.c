@@ -761,12 +761,13 @@ void spin_model_acados_setup_nlp_in(spin_model_solver_capsule* capsule, const in
 
     // x
     int* idxbx = malloc(NBX * sizeof(int));
-    idxbx[0] = 4;
+    idxbx[0] = 3;
+    idxbx[1] = 4;
     double* lubx = calloc(2*NBX, sizeof(double));
     double* lbx = lubx;
     double* ubx = lubx + NBX;
-    lbx[0] = -0.35;
-    ubx[0] = 0.5;
+    lbx[1] = -0.35;
+    ubx[1] = 0.5;
 
     for (int i = 1; i < N; i++)
     {

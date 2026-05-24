@@ -71,27 +71,50 @@ def generate_mpc(model):
     ocp.constraints.ubu = np.array([ 3.0,  1.0]) # a, delta_dot(or omega_dot) 최대
     ocp.constraints.idxbu = np.array([0, 1])     # 0th idx : a, 1st idx : delta_dot (omega_dot)   
 
+    v_limit = 0.6   # 실제 v max보다 크게 설정
+
+    # idxbx : 상태 변수 index
+    # reference : nav2_params.yaml -> ExtendedHybridAStar
     if (model.name == 'bicycle_model'):
-        # 상태 제약 (예: 최대 조향각 제한 -75도 ~ 75도)
-        # idxbx : 상태 변수 index
-        # reference : nav2_params.yaml -> ExtendedHybridAStar, delta_max
-        ocp.constraints.lbx = np.array([-1.5]) 
-        ocp.constraints.ubx = np.array([ 1.5])
-        ocp.constraints.idxbx = np.array([4]) # delta(4번째 인덱스)
+        # 상태 제약: v(인덱스 3), delta(인덱스 4)
+        ocp.constraints.lbx = np.array([-v_limit, -1.5]) 
+        ocp.constraints.ubx = np.array([ v_limit,  1.5])
+        ocp.constraints.idxbx = np.array([3, 4]) 
+        
     elif (model.name == 'parallel_model'):
-        # 상태 제약 (예: 최대 조향각 제한 -75도 ~ 75도)
-        # idxbx : 상태 변수 index
-        # reference : nav2_params.yaml -> ExtendedHybridAStar, alpha
-        ocp.constraints.lbx = np.array([-1.57])  # = alpha
-        ocp.constraints.ubx = np.array([ 1.57])
-        ocp.constraints.idxbx = np.array([4]) # delta(4번째 인덱스)
+        # 상태 제약: v(인덱스 3), delta(인덱스 4, parallel에서는 alpha)
+        ocp.constraints.lbx = np.array([-v_limit, -1.57]) 
+        ocp.constraints.ubx = np.array([ v_limit,  1.57])
+        ocp.constraints.idxbx = np.array([3, 4]) 
+        
     elif (model.name == 'spin_model'):
-        # 상태 제약 (예: 최대 omega(각속도) 제한)
-        # idxbx : 상태 변수 index
-        # reference : nav2_params.yaml -> ExtendedHybridAStar
-        ocp.constraints.lbx = np.array([-0.35])  # = vx_min
-        ocp.constraints.ubx = np.array([ 0.5])  # = vx_max
-        ocp.constraints.idxbx = np.array([4]) # omega(4번째 인덱스)
+        # 상태 제약: v(인덱스 3), delta(인덱스 4, spin에서는 omega)
+        # 🌟 제자리 회전 모드에서는 물리적으로 선속도 v가 무조건 0이어야 함!
+        ocp.constraints.lbx = np.array([ 0.0, -0.35]) 
+        ocp.constraints.ubx = np.array([ 0.0,  0.50]) 
+        ocp.constraints.idxbx = np.array([3, 4])
+
+    # if (model.name == 'bicycle_model'):
+    #     # 상태 제약 (예: 최대 조향각 제한 -75도 ~ 75도)
+    #     # idxbx : 상태 변수 index
+    #     # reference : nav2_params.yaml -> ExtendedHybridAStar, delta_max
+    #     ocp.constraints.lbx = np.array([-1.5]) 
+    #     ocp.constraints.ubx = np.array([ 1.5])
+    #     ocp.constraints.idxbx = np.array([4]) # delta(4번째 인덱스)
+    # elif (model.name == 'parallel_model'):
+    #     # 상태 제약 (예: 최대 조향각 제한 -75도 ~ 75도)
+    #     # idxbx : 상태 변수 index
+    #     # reference : nav2_params.yaml -> ExtendedHybridAStar, alpha
+    #     ocp.constraints.lbx = np.array([-1.57])  # = alpha
+    #     ocp.constraints.ubx = np.array([ 1.57])
+    #     ocp.constraints.idxbx = np.array([4]) # delta(4번째 인덱스)
+    # elif (model.name == 'spin_model'):
+    #     # 상태 제약 (예: 최대 omega(각속도) 제한)
+    #     # idxbx : 상태 변수 index
+    #     # reference : nav2_params.yaml -> ExtendedHybridAStar
+    #     ocp.constraints.lbx = np.array([-0.35])  # = vx_min
+    #     ocp.constraints.ubx = np.array([ 0.5])  # = vx_max
+    #     ocp.constraints.idxbx = np.array([4]) # omega(4번째 인덱스)
 
     # 초기 상태 세팅
     ocp.constraints.x0 = np.array([0.0, 0.0, 0.0, 0.0, 0.0])

@@ -39,6 +39,7 @@
             1
         ],
         "idxbx": [
+            3,
             4
         ],
         "idxbx_0": [
@@ -75,6 +76,7 @@
             -1.0
         ],
         "lbx": [
+            -0.6,
             -1.57
         ],
         "lbx_0": [
@@ -112,6 +114,7 @@
             1.0
         ],
         "ubx": [
+            0.6,
             1.57
         ],
         "ubx_0": [
@@ -421,7 +424,7 @@
         "N": 150,
         "n_global_data": 0,
         "nbu": 2,
-        "nbx": 1,
+        "nbx": 2,
         "nbx_0": 5,
         "nbx_e": 0,
         "nbxe_0": 5,
@@ -476,7 +479,7 @@
         "parallel_model_cost/parallel_model_cost_y_e_fun_jac_ut_xt.c",
         "parallel_model_cost/parallel_model_cost_y_e_hess.c"
     ],
-    "hash": "8086459f79895b35370b7f31b5e043e6",
+    "hash": "5f621599fd9242064268f45af738f96e",
     "model": {
         "con_h_expr": [],
         "con_h_expr_0": [],
