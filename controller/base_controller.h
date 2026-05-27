@@ -8,7 +8,7 @@
 #include <algorithm>
 #include "mpc/include/structs_mpc.h"
 
-const double GOAL_TOLERANCE = 0.1;
+const double GOAL_TOLERANCE = 0.01;
 
 class BaseController 
 {

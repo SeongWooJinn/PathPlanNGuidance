@@ -339,31 +339,31 @@ void visualize_tracking_performance(
 		else
 			mode_color = Color::Blue;
 
-        // 실제 이동한 궤적 선 (파란색 등 눈에 띄는 색상)
-        int p2x = occ_map.WorldXToXi(tracked_path[i].x);
-        int p2y = occ_map.WorldYToYi(tracked_path[i].y);
-        cv::line(img, 
-                 cv::Point(p1x * cell_size, p1y * cell_size), 
-                 cv::Point(p2x * cell_size, p2y * cell_size), 
-                 mode_color, 3);
+        // // 실제 이동한 궤적 선 (파란색 등 눈에 띄는 색상)
+        // int p2x = occ_map.WorldXToXi(tracked_path[i].x);
+        // int p2y = occ_map.WorldYToYi(tracked_path[i].y);
+        // cv::line(img, 
+        //          cv::Point(p1x * cell_size, p1y * cell_size), 
+        //          cv::Point(p2x * cell_size, p2y * cell_size), 
+        //          mode_color, 3);
 
-        // // 로봇의 실제 헤딩을 반영한 박스 그리기
-        // drawVehicle(img,
-        //     p1x * cell_size,
-        //     p1y * cell_size,
-        //     p1t,
-        //     (r_length / resolution) * cell_size,
-        //     (r_width / resolution) * cell_size,
-        //     mode_color); // 차량 모드에 따라 색상 분기 가능
+        // 로봇의 실제 헤딩을 반영한 박스 그리기
+        drawVehicle(img,
+            p1x * cell_size,
+            p1y * cell_size,
+            p1t,
+            (r_length / resolution) * cell_size,
+            (r_width / resolution) * cell_size,
+            mode_color); // 차량 모드에 따라 색상 분기 가능
     }
-	// // goal point triangle
-	// drawVehicle(img,
-	// 	occ_map.WorldXToXi(tracked_path[tracked_path.size() - 1].x) * cell_size,
-	// 	occ_map.WorldYToYi(tracked_path[tracked_path.size() - 1].y) * cell_size,
-	// 	tracked_path[tracked_path.size() - 1].theta,
-	// 	(r_length / resolution) * cell_size,
-	// 	(r_width / resolution) * cell_size,
-	// 	mode_color);
+	// goal point triangle
+	drawVehicle(img,
+		occ_map.WorldXToXi(tracked_path[tracked_path.size() - 1].x) * cell_size,
+		occ_map.WorldYToYi(tracked_path[tracked_path.size() - 1].y) * cell_size,
+		tracked_path[tracked_path.size() - 1].theta,
+		(r_length / resolution) * cell_size,
+		(r_width / resolution) * cell_size,
+		mode_color);
 
 
     // 4. 이미지 저장

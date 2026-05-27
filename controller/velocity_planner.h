@@ -37,7 +37,10 @@ inline void decelerationProfile(
         double speed_limit = std::min(std::abs(path[i].v), v_dec_limit);
         path[i].v = sign * speed_limit;
 
-        // path[i].v = std::min(path[i].v, v_dec_limit);
+        // for (const auto& p : path) 
+        // {
+        //     std::cout << p.v << std::endl;
+        // }
     }
 }
 inline ReferenceTraj interpolateState(
@@ -182,7 +185,7 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
         double dy = spatial_path[i].y - spatial_path[i-1].y;
         double ds = std::hypot(dx, dy);
 
-        // 🌟 핵심 방어 로직: 제자리 회전(Spin) 등 물리적 이동 거리가 0일 때 '가상 거리' 부여
+        // 방어 로직: 제자리 회전(Spin) 등 물리적 이동 거리가 0일 때 '가상 거리' 부여
         if (ds < 1e-3) {
             // 헤딩 변화량을 거리로 환산 (1라디안 회전을 1m 전진과 동일한 비율로 취급)
             double dtheta = std::abs(normalizeAngle(spatial_path[i].theta - spatial_path[i-1].theta));

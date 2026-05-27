@@ -136,20 +136,47 @@ public:
         int search_limit = std::min(current_closest_idx_ + 100, (int)ref_traj_.size());
         for (int i = current_closest_idx_; i < search_limit; ++i) {
             double dist = calcDistance(curr[0], curr[1], ref_traj_[i].x, ref_traj_[i].y);
+            // double dtheta = std::abs(normalizeAngle(curr[2] - ref_traj_[i].theta));
+            // double ddelta = std::abs(normalizeAngle(curr[4] - ref_traj_[i].delta));
+            // double dist = dist_xy + 0.5 * dtheta + 0.1 * ddelta;
             if (dist < min_dist) {
                 min_dist = dist;
                 best_idx = i;
             }
         }
-        // 속도가 매우 작고 거리변화도 거의 없으면 거리기반 인덱스 탐색 없이 무조건 인덱스 +1 
-        if (min_dist < min_d && std::abs(ref_traj_[current_closest_idx_].v) < zero_v) {
-            best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
-            // std::cout << "idx / mode : " << best_idx << " / " << curr_mode << std::endl;
+        double dx_cur = curr[0] - ref_traj_[best_idx].x;
+        double dy_cur = curr[1] - ref_traj_[best_idx].y;
+        double dtheta_cur = std::abs(normalizeAngle(curr[2] - ref_traj_[best_idx].theta));
+        double ddelta_cur = std::abs(normalizeAngle(curr[4] - ref_traj_[best_idx].delta));
+
+        VehicleMode best_mode = ref_traj_[best_idx].mode;
+        switch (best_mode)
+        {
+        case VehicleMode::ParallelMode:     
+            if (std::hypot(dx_cur, dy_cur) < min_d ) { //&& std::abs(ref_traj_[best_idx].v) < zero_v) {
+                best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
+            }
+            break;
+        case VehicleMode::SpinMode:     
+            if (dtheta_cur < 0.2 && std::abs(ref_traj_[best_idx].v) < zero_v) {
+                best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
+            }
+            break;
+        default:    // bicycle
+            if (std::hypot(dx_cur, dy_cur) < min_d && dtheta_cur < 0.2) {
+                best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
+            }
+            break;
         }
         current_closest_idx_ = best_idx;
-        // if (ref_traj_[current_closest_idx_].mode == VehicleMode::SpinMode)
+
+        // if (current_closest_idx_ > 34)
         // {
-        //     current_closest_idx_ = std::min(current_closest_idx_ + 1, (int)ref_traj_.size());
+        //     std::cout << "idx: " << current_closest_idx_ << " | delta dist: " << std::hypot(dx_cur, dy_cur) 
+        //             << " | delta_theta: " << dtheta_cur 
+        //             << " | abs vel: " << std::abs(ref_traj_[current_closest_idx_].v) 
+        //             << " | delta_delta: " << ddelta_cur << std::endl;
+
         // }
 
         // 2. 예측 호라이즌 내 추종 궤적(yref_window) 찾기
@@ -197,6 +224,7 @@ public:
         return current_closest_idx_;
 
     }
+
     bool isGuidanceFinished(const double* curr) override {
 
         if (ref_traj_.empty()) return true;

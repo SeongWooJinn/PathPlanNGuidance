@@ -20,12 +20,13 @@ int main()
     // 제어 파라미터 세팅 (실제 차량 사양에 맞게 튜닝)
     // nav2_params.yaml controller server
     // 제동거리 고려해서 설정(d = v^2 / 2a)
-    double v_max = 0.3;        // 최대 허용 속도 (m/s),generate_mpc의 v limit보다 작게 설정
+    double v_max = 0.35;        // 최대 허용 속도 (m/s),generate_mpc의 v limit보다 작게 설정
     double a_lat_max = 0.2;    // 최대 횡가속도(구심 가속도) 한계 (커브길 감속용)
     double a_dec_mag = 0.1;    // 최대 감속도 크기 (양수로 입력, 브레이크 성능)
+    double a_max = 3.0;        // 최대 가속도 크기
     double dt = 5.0 / 150.0;          // MPC 제어 주기 generate_mpc.py -> Tf / N
-    double zero_velocity_thres = std::max(0.01, dt * a_dec_mag); //dt * a_dec_mag;
-    double min_dist_thres = v_max * dt;
+    double zero_velocity_thres = std::max(0.01, dt * a_max); //dt * a_dec_mag;
+    double min_dist_thres = 20 * v_max * dt;    // 0.1m
 
     // get resampled reference trajectory
     if (!mpc_bi.getRefTraj(g_path, v_max, a_lat_max, a_dec_mag, dt)) return -1;
@@ -60,15 +61,8 @@ int main()
 
         VehicleMode curr_mode = resampled_traj[closest_idx].mode;
 
-        // 속도가 매우 작고 현재와 다음 인덱스의 모드가 다를때(spinmode 추종을 위해)
-        // 속도가 작을때 조건 필수 -> 속도가 작아야 spinmode의 제자리 회전 동역학을 만족할수 있음 
-        if (std::abs(resampled_traj[closest_idx].v) < 1e-3 && 
-            closest_idx + 1 < resampled_traj.size() - 1 && 
-            curr_mode != resampled_traj[closest_idx + 1].mode)
-        {
-            curr_mode = resampled_traj[closest_idx + 1].mode;
-            closest_idx += 1;       // modify
-            std::cout << "mode change!! : " << resampled_traj[closest_idx].mode 
+        if (closest_idx != 0 && curr_mode != resampled_traj[closest_idx - 1].mode) {
+            std::cout << "mode change!! : " << resampled_traj[closest_idx - 1].mode
                       << " --> " << curr_mode << ", idx : " << closest_idx << std::endl;
         }
 
@@ -172,7 +166,8 @@ int main()
     OccMap gt(rows, cols, resolution);
     double sx = 5.0; double sy = 2.0; 
     // double gx = 50.0; double gy = 5.0;
-    double gx = 24.0; double gy = 25.0;
+    // double gx = 24.0; double gy = 25.0;
+    double gx = 40.0; double gy = 8.0;
     gt.generate_example_map_v3(0.0, sx, sy, gx, gy);
     GridMap<int>& gt_map = gt.getOccMap();
 
