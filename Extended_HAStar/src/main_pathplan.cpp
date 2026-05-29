@@ -143,7 +143,7 @@ int main() {
         //std::vector<std::pair<State, VehicleMode>> g_path;
         std::vector<State> g_path;
         std::vector<std::tuple<double, double, double>> g_path_vis, g_path_smoothing_vis;
-
+        int cell_size = 10;
         auto start = std::chrono::system_clock::now();
         if (hastar.run(sx, sy, stheta, sgear, smode, gx, gy, gtheta)) {
             auto end = std::chrono::system_clock::now();
@@ -154,7 +154,7 @@ int main() {
             visualize_hybridastar_path(
                 g_path, 
                 gt_map, 
-                10, 
+                cell_size, 
                 my_robot.robot_length, 
                 my_robot.robot_width, 
                 "Global Hybrid A* path in GT map", 
@@ -169,6 +169,21 @@ int main() {
             << ", " << p.gear << ", " << p.steering << ", " << p.vehicle << std::endl;
 
         savePathToBin(g_path, "/tmp/hybrid_astar_path");
+        
+        // for plot in controller packages
+        mapInfo mapinfo;
+        mapinfo.cell_size = cell_size;
+        mapinfo.resolution = resolution;
+        mapinfo.r_length = my_robot.robot_length;
+        mapinfo.r_width = my_robot.robot_width;
+        mapinfo.rows = rows;
+        mapinfo.cols = cols;
+        mapinfo.sx = sx;
+        mapinfo.sy = sy;
+        mapinfo.gx = gx;
+        mapinfo.gy = gy;
+
+        saveMapInfoToBin(mapinfo, "/tmp/mapinfo");
     }
     // std::vector<State> load_path = loadPathFromBin("/tmp/hybrid_astar_path");
     // std::cout << "load path successfully" << std::endl;

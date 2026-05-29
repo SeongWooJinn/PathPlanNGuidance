@@ -29,7 +29,7 @@ int main()
     double min_dist_thres = 20 * v_max * dt;    // 0.1m
 
     // get resampled reference trajectory
-    if (!mpc_bi.getRefTraj(g_path, v_max, a_lat_max, a_dec_mag, dt)) return -1;
+    if (!mpc_bi.getRefTraj(g_path, v_max, a_lat_max, a_max, a_dec_mag, dt)) return -1;
     
     // 글로벌 궤적 포인터 (각 컨트롤러가 동일한 ref_traj_를 공유)
     const std::vector<ReferenceTraj>& resampled_traj = mpc_bi.getRefTrajectoryData();
@@ -54,6 +54,7 @@ int main()
     std::vector<std::pair<double, double>> controls;
     int closest_idx = 0;
 
+    std::vector<MpcResultLog> mpc_log;
     // 4. 제어 루프
     VehicleMode prev_mode = resampled_traj[closest_idx].mode;
     std::cout << "init ref_traj.mode : " << prev_mode << std::endl;
@@ -141,6 +142,17 @@ int main()
         // current control inputs
         controls.push_back({current_u[0], current_u[1]});
 
+        // save mpc results
+        MpcResultLog curr_mpc;
+        curr_mpc.x     = current_x[0];
+        curr_mpc.y     = current_x[1];
+        curr_mpc.theta = current_x[2];
+        curr_mpc.v     = current_x[3];
+        curr_mpc.delta = current_x[4];
+        curr_mpc.a     = current_u[0];
+        curr_mpc.delta_dot = current_u[1];
+        mpc_log.emplace_back(curr_mpc);
+
         std::cout << "추종 인덱스: " << closest_idx 
                   << " | 현재 상태 X: " << current_x[0] << ", Y: " << current_x[1] 
                   << " , Theta: " << current_x[2] << ", v: " << current_x[3] << ", delta: " << current_x[4] 
@@ -149,25 +161,26 @@ int main()
     }
 
     std::cout << "경로 추종 시뮬레이션 완료." << std::endl;
-    
+    saveMpcResultToBin(mpc_log, "/tmp/mpc_log");
+
     //////////////////// 시각화 /////////////////////
     // Extended_HAStar main.cpp와 동일한 값들 세팅필요 //
     ///////////////////////////////////////////////
-    double cell_size = 10.0;     // 픽셀 비율 
-    double r_length = 1.0;       // 로봇 길이
-    double r_width = 0.6;        // 로봇 폭
-    double resolution = 0.2;     // 맵 해상도
+    mapInfo mapinfo;
+    loadMapInfoFromBin(mapinfo, "/tmp/mapinfo");
 
-    double map_height = 30.0;
-    double map_width = 60.0;
-    int rows = static_cast<int>(map_height / resolution);
-    int cols = static_cast<int>(map_width / resolution);
+    int cell_size   = mapinfo.cell_size;     // 픽셀 비율 
+    double r_length = mapinfo.r_length;       // 로봇 길이
+    double r_width  = mapinfo.r_width;        // 로봇 폭
+    double resolution = mapinfo.resolution;     // 맵 해상도
+
+    int rows = mapinfo.rows;
+    int cols = mapinfo.cols;
+
+    double sx = mapinfo.sx; double sy = mapinfo.sy; 
+    double gx = mapinfo.gx; double gy = mapinfo.gy;
 
     OccMap gt(rows, cols, resolution);
-    double sx = 5.0; double sy = 2.0; 
-    // double gx = 50.0; double gy = 5.0;
-    // double gx = 24.0; double gy = 25.0;
-    double gx = 40.0; double gy = 8.0;
     gt.generate_example_map_v3(0.0, sx, sy, gx, gy);
     GridMap<int>& gt_map = gt.getOccMap();
 

@@ -144,6 +144,25 @@ struct VehicleWeights {
     double spin_switch_penalty = 1.0;
 };
 
+// 메모리 패딩을 제거하여 C++ 구조체와 Python numpy dtype 구조를 1:1로 강제 매핑
+#pragma pack(push, 1)
+struct MpcResultLog {
+    double x, y, theta, v, delta;
+    double a, delta_dot;
+};
+#pragma pack(pop)
+
+struct mapInfo
+{
+    double cell_size;     // 픽셀 비율 
+    double r_length;       // 로봇 길이
+    double r_width;        // 로봇 폭
+    double resolution;     // 맵 해상도
+    int rows, cols;
+    double sx, sy; 
+    double gx, gy;
+};
+
 // enum class 연산자 오버로딩
 inline std::ostream& operator<<(std::ostream& os, VehicleMode v) {
     switch (v) {
@@ -190,13 +209,33 @@ inline std::vector<State> loadPathFromBin(const std::string& filename) {
     return path;
 }
 
-// 메모리 패딩을 제거하여 C++ 구조체와 Python numpy dtype 구조를 1:1로 강제 매핑
-#pragma pack(push, 1)
-struct MpcResultLog {
-    double x, y, theta, v, delta;
-    double a, delta_dot;
-};
-#pragma pack(pop)
+// For plot in controller packages
+inline void saveMapInfoToBin(const mapInfo& log_data, const std::string& filename) {
+    // ios::binary 플래그를 사용하여 바이너리 쓰기 모드로 파일 열기
+    std::ofstream out(filename, std::ios::binary);
+    if (!out) {
+        std::cerr << "MapInfo 파일 저장 실패: " << filename << std::endl;
+        return;
+    }
+    // vector의 메모리 시작 주소부터 전체 크기만큼 단숨에 쓰기
+    out.write(reinterpret_cast<const char*>(&log_data), sizeof(mapInfo));
+    out.close();
+    std::cout << "MapInfo가 " << filename << " 에 바이너리로 저장되었습니다." << std::endl;
+
+}
+inline bool loadMapInfoFromBin(mapInfo& log_data, const std::string& filename) {
+    std::ifstream in(filename, std::ios::binary);
+    if (!in) {
+        std::cerr << "MapInfo 결과 파일 열기 실패: " << filename << std::endl;
+        return false;
+    }
+
+    // 파일에서 구조체 크기만큼 읽어서 log_data 메모리에 덮어쓰기
+    in.read(reinterpret_cast<char*>(&log_data), sizeof(mapInfo));
+    in.close();
+    
+    return true;
+}
 
 // MPC 결과 바이너리 저장 함수
 inline void saveMpcResultToBin(const std::vector<MpcResultLog>& log_data, const std::string& filename) {

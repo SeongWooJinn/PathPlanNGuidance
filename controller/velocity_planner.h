@@ -12,6 +12,39 @@ inline double normalizeAngle(double angle) {
 }
 
 /////////////// velocity planner (velocity propiling) logic ///////////////
+inline void accelerationProfile(
+    std::vector<ReferenceTraj>& path, double a_acc_mag) 
+{
+    if (path.empty()) return;
+
+    path[0].v = 0.0;
+    std::vector<double> s_spatial(path.size(), 0);
+
+    for (int i = 0; i < path.size() - 1; ++i) {
+        double dx = path[i+1].x - path[i].x;
+        double dy = path[i+1].y - path[i].y;
+        double ds = std::hypot(dx, dy);
+
+        // 방어 로직: 제자리 회전(Spin) 등 물리적 이동 거리가 0일 때 '가상 거리' 부여
+        if (ds < 1e-3) {
+            double dtheta = std::abs(normalizeAngle(path[i+1].theta - path[i].theta));
+            if (dtheta > 1e-3) {
+                ds = dtheta * 1.0;
+            }
+            else {
+                ds = 0.1;
+            }
+        }
+        s_spatial[i+1] = s_spatial[i] + ds;
+
+        // 등가속도 운동 공식 적용, 다음 스텝의 최대 허용 속도
+        double max_v_next = std::sqrt(path[i].v * path[i].v + 2 * a_acc_mag * s_spatial[i+1]);
+        double sign = (path[i+1].v > 0) ? 1.0 : -1.0;
+        if (std::abs(path[i+1].v) > max_v_next)
+            path[i+1].v = sign * max_v_next;
+    }
+}
+
 inline void decelerationProfile(
     std::vector<ReferenceTraj>& path, double a_dec_mag) 
 {
@@ -37,10 +70,6 @@ inline void decelerationProfile(
         double speed_limit = std::min(std::abs(path[i].v), v_dec_limit);
         path[i].v = sign * speed_limit;
 
-        // for (const auto& p : path) 
-        // {
-        //     std::cout << p.v << std::endl;
-        // }
     }
 }
 inline ReferenceTraj interpolateState(
@@ -96,7 +125,7 @@ inline ReferenceTraj hermiteSplineinterpolateState(
     new_pt.obs = 0.0;
     new_pt.mode = pt2.mode;
 
-    // parallel mode: 헤딩 고정, 조향각 고정, 직선 대각선 이동
+    // 1. parallel mode: 헤딩 고정, 조향각 고정, 직선 대각선 이동
     if (new_pt.mode == VehicleMode::ParallelMode) {
         new_pt.x = (1.0 - r) * pt1.x + r * pt2.x;
         new_pt.y = (1.0 - r) * pt1.y + r * pt2.y;
@@ -105,7 +134,7 @@ inline ReferenceTraj hermiteSplineinterpolateState(
         new_pt.v = (1.0 - r) * pt1.v + r * pt2.v;
         return new_pt;
     } 
-    // spin mode : x,y 고정, 속도 0, 헤딩만 회전
+    // 2. spin mode : x,y 고정, 속도 0, 헤딩만 회전
     else if (new_pt.mode == VehicleMode::SpinMode) {
         new_pt.x = pt1.x;
         new_pt.y = pt1.y;
@@ -115,7 +144,7 @@ inline ReferenceTraj hermiteSplineinterpolateState(
         return new_pt;
     }
 
-    // Bicycle mode
+    // 3. Bicycle mode
     double ds = std::hypot(pt2.x - pt1.x, pt2.y - pt1.y);
 
     // 기어가 바뀌는 구간은 스플라인을 그리지 않고 단순 선형 보간 처리 (꼬임 방지)
@@ -197,14 +226,6 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
         }
         s_spatial[i] = s_spatial[i-1] + ds;
     }
-    // // 1. 공간 경로의 각 점까지의 누적 거리(s) 계산
-    // std::vector<double> s_spatial(spatial_path.size(), 0.0);
-    // for (size_t i = 1; i < spatial_path.size(); ++i) {
-    //     s_spatial[i] = s_spatial[i-1] + std::hypot(
-    //         spatial_path[i].x - spatial_path[i-1].x, 
-    //         spatial_path[i].y - spatial_path[i-1].y
-    //     );
-    // }
     double total_distance = s_spatial.back();
 
     // 2. 초기점(t=0) 세팅
@@ -240,28 +261,6 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
         // 4. x, y, theta, delta, v 보간!
         ReferenceTraj new_pt = hermiteSplineinterpolateState(spatial_path[idx], spatial_path[idx + 1], r);
 
-        // // 모드 다르면 switching time 적용(my_robot.switch_time in hastar)
-        // // switching time 동안 정지함
-        // double switching_time = 1.0;    // in hastar
-        // if (prev_pt.mode != new_pt.mode) {
-        //     int buffer_steps = switching_time / dt;
-        //     ReferenceTraj align_pt = prev_pt; 
-        //     align_pt.v = 0.0;
-        //     align_pt.a = 0.0;
-        //     align_pt.mode = new_pt.mode;
-
-        //     double start_delta = prev_pt.delta;
-        //     double end_delta = new_pt.delta;
-
-        //     // 바퀴만 돌리도록 궤적 생성
-        //     for (size_t i = 1; i <= buffer_steps; ++i) {
-        //         align_pt.delta = start_delta + (end_delta - start_delta) * static_cast<double>(i / buffer_steps);
-        //         align_pt.delta_dot = (end_delta - start_delta) / (buffer_steps * dt);
-        //         temporal_path.push_back(align_pt);
-        //     }
-        //     // 버퍼가 끝난 시점부터 다시 정상 궤적 추종을 이어가기 위해 prev_pt 갱신
-        //     prev_pt = temporal_path.back();
-        // }
         // 5. 미분값 추출 (a, delta_dot)
         new_pt.a = (new_pt.v - prev_pt.v) / dt;
         // new_pt.a = std::clamp(new_pt.a, -MAX_DECEL, MAX_ACCEL);

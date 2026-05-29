@@ -46,7 +46,7 @@ public:
 ///////////// 공통 로직 (BaseController의 가상 함수 구현) /////////////
     bool getRefTraj(
         std::vector<State>& global_path, double v_max,
-        double a_lat_max, double a_dec_mag, double dt) override 
+        double a_lat_max, double a_acc_mag, double a_dec_mag, double dt) override 
     {
         
         if (global_path.empty()) return false;
@@ -93,6 +93,7 @@ public:
         spatial_ref.back().v = 0.0; // 종점 정지
 
         // 3. 감가속 제약, v^2 - v0^2 = 2as
+        accelerationProfile(spatial_ref, a_acc_mag);
         // 언제부터 브레이크를 밟을 것인지 check
         decelerationProfile(spatial_ref, a_dec_mag);
 
