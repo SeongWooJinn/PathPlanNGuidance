@@ -291,7 +291,8 @@ void visualize_tracking_performance(
     const std::vector<State>& tracked_path, // MPC가 실제로 주행한 궤적 추가
     GridMap<int>& occ_map,
     int cell_size, double r_length, double r_width,
-    std::string title, double resolution)
+    std::string title, double resolution,
+	double px_scale, double origin_x, double origin_y)
 {
     int rows = occ_map.data_.rows();
     int cols = occ_map.data_.cols();
@@ -311,10 +312,18 @@ void visualize_tracking_performance(
 
     // 2. 옅은 색상으로 전역 경로(Reference) 먼저 그리기 (밑바탕)
     for (size_t i = 1; i < global_path.size(); ++i) {
-        int p1x = occ_map.WorldXToXi(global_path[i - 1].x);
-        int p1y = occ_map.WorldYToYi(global_path[i - 1].y);
-        int p2x = occ_map.WorldXToXi(global_path[i].x);
-        int p2y = occ_map.WorldYToYi(global_path[i].y);
+        int p1x = [&](double p) {
+				return static_cast<int>(floor( (p - origin_x) / px_scale));
+			}(global_path[i - 1].x );
+        int p1y = [&](double p) {
+				return static_cast<int>(floor( (p - origin_y) / px_scale));
+			}(global_path[i - 1].y );
+        int p2x = [&](double p) {
+				return static_cast<int>(floor( (p - origin_x) / px_scale));
+			}(global_path[i].x );
+        int p2y = [&](double p) {
+				return static_cast<int>(floor( (p - origin_y) / px_scale));
+			}(global_path[i].y );
         
         cv::Point p1(p1x * cell_size, p1y * cell_size);
         cv::Point p2(p2x * cell_size, p2y * cell_size);
@@ -326,8 +335,12 @@ void visualize_tracking_performance(
     // 3. 진한 색상으로 실제 추종 경로(Tracked) 그리기 (차량 폴리곤 포함)
 	cv::Scalar mode_color;
     for (size_t i = 1; i < tracked_path.size(); ++i) {
-        int p1x = occ_map.WorldXToXi(tracked_path[i - 1].x);
-        int p1y = occ_map.WorldYToYi(tracked_path[i - 1].y);
+        int p1x = [&](double p) {
+				return static_cast<int>(floor( (p - origin_x) / px_scale));
+			}(tracked_path[i - 1].x );
+        int p1y = [&](double p) {
+				return static_cast<int>(floor( (p - origin_y) / px_scale));
+			}(tracked_path[i - 1].y );
         double p1t = tracked_path[i - 1].theta;
 		VehicleMode p1mode = tracked_path[i-1].vehicle;
 
@@ -357,9 +370,15 @@ void visualize_tracking_performance(
             mode_color); // 차량 모드에 따라 색상 분기 가능
     }
 	// goal point triangle
+	int gx = [&](double p) {
+			return static_cast<int>(floor( (p - origin_x) / px_scale));
+		}(tracked_path[tracked_path.size() - 1].x);
+	int gy = [&](double p) {
+			return static_cast<int>(floor( (p - origin_y) / px_scale));
+		}(tracked_path[tracked_path.size() - 1].y);
 	drawVehicle(img,
-		occ_map.WorldXToXi(tracked_path[tracked_path.size() - 1].x) * cell_size,
-		occ_map.WorldYToYi(tracked_path[tracked_path.size() - 1].y) * cell_size,
+		gx * cell_size,
+		gy * cell_size,
 		tracked_path[tracked_path.size() - 1].theta,
 		(r_length / resolution) * cell_size,
 		(r_width / resolution) * cell_size,

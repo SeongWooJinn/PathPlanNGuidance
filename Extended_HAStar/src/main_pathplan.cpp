@@ -15,8 +15,8 @@ int main() {
     double map_height = 30.0;
     double map_width = 60.0;
     double resolution = 0.2; //1.0;
-    double sx = 5.0; double sy = 2.0; double stheta = 0.5 * M_PI; int sgear = 0.0; VehicleMode smode = VehicleMode::BicycleMode;
-    double gx = 40.0; double gy = 8.0; double gtheta = 1.0 * M_PI;
+    double sx = 5.0; double sy = 2.0; double stheta = 1.5 * M_PI; int sgear = 0.0; VehicleMode smode = VehicleMode::BicycleMode;
+    double gx = 40.0; double gy = 8.0; double gtheta = 0.0 * M_PI;
     // double gx = 24.0; double gy = 25.0; double gtheta = 1.0 * M_PI;
 
     //double gx = 35.0; double gy = 8.0; double gtheta = 1.0 * M_PI;
@@ -135,8 +135,8 @@ int main() {
         hastar.setWeights(planner_w);
         
         // vehicle mode 등록
-        hastar.registVehicleMode(std::move(bicycle));
-        hastar.registVehicleMode(std::move(crab));
+        hastar.registVehicleMode(std::move(bicycle));       // non holonimic mode essential!!!
+        // hastar.registVehicleMode(std::move(crab));
         hastar.registVehicleMode(std::move(spin));
 
         // Global Hybrid AStar Path
@@ -176,12 +176,11 @@ int main() {
         mapinfo.resolution = resolution;
         mapinfo.r_length = my_robot.robot_length;
         mapinfo.r_width = my_robot.robot_width;
-        mapinfo.rows = rows;
-        mapinfo.cols = cols;
         mapinfo.sx = sx;
         mapinfo.sy = sy;
         mapinfo.gx = gx;
         mapinfo.gy = gy;
+        mapinfo.map = gt_map;
 
         saveMapInfoToBin(mapinfo, "/tmp/mapinfo");
     }

@@ -26,7 +26,8 @@ def generate_mpc(model):
     # x_obs, y_obs (가장 가까운 장애물의 좌표)
     p = ca.SX.sym('p', 2) 
     ocp.model.p = p # 모델에 파라미터 등록
-    ocp.parameter_values = np.array([0.0, 0.0]) # initialize
+    # ocp.parameter_values = np.array([0.0, 0.0]) # initialize 
+    ocp.parameter_values = np.array([10000.0, 10000.0]) # initialize 유령 장애물
 
     # ===============================================
     # 목적 함수 (Cost Function) 세팅 (NONLINEAR_LS 방식)

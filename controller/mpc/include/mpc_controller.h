@@ -51,7 +51,7 @@ public:
         
         if (global_path.empty()) return false;
 
-        // 1. 우선 기존 공간경로에 v항을 넣어줌
+        // 1. 기존 공간경로에 v항을 넣어줌
         std::vector<ReferenceTraj> spatial_ref(global_path.size());
         for (size_t i = 0; i < global_path.size(); ++i) 
         {
@@ -61,10 +61,14 @@ public:
             spatial_ref[i].delta = global_path[i].steering;
             spatial_ref[i].v = (global_path[i].gear == 0) ? v_max : -v_max;
             spatial_ref[i].mode = global_path[i].vehicle;
-            // 모드 전환 지점에서는 v = 0
-            if (i > 0 && spatial_ref[i].mode != spatial_ref[i-1].mode) {
-                spatial_ref[i-1].v = 0;
-                spatial_ref[i].v = 0;
+            // 모드 전환 or 기어 전환 지점에서는 v = 0
+            if (i > 0) {
+                bool mode_changed = (spatial_ref[i].mode != spatial_ref[i-1].mode);
+                bool gear_changed = (spatial_ref[i].v * spatial_ref[i-1].v < 0.0); // 부호가 다르면 곱이 음수
+                
+                if (mode_changed || gear_changed) {
+                    spatial_ref[i-1].v = 0.0;
+                }
             }
         }
 
@@ -97,6 +101,11 @@ public:
         // 언제부터 브레이크를 밟을 것인지 check
         decelerationProfile(spatial_ref, a_dec_mag);
 
+        // // velocity check
+        // for (int i = 0; i < spatial_ref.size(); ++i){
+        //     std::cout << i << ": "<< spatial_ref[i].v << std::endl;
+        // }
+
         // 4. 시간 기반 리샘플링, 시간 기반 궤적 계산
         ref_traj_ = resampleTimeBasedTrajectory(spatial_ref, dt);
 
@@ -127,7 +136,9 @@ public:
         return !ref_traj_.empty();
     }
 
-    int updateSlidingWindow(const double* curr, VehicleMode& curr_mode, double min_d, double zero_v) override {
+    int updateSlidingWindow(const double* curr, VehicleMode& curr_mode, 
+        double min_d, double zero_v,
+        double bi_dtheta, double spin_dtheta) override {
         if (ref_traj_.empty()) return -1;
 
         // 1. 이전 인덱스 기반으로 추종 궤적 내 가장 가까운 점 탐색 (연산 최적화)
@@ -159,12 +170,12 @@ public:
             }
             break;
         case VehicleMode::SpinMode:     
-            if (dtheta_cur < 0.2 && std::abs(ref_traj_[best_idx].v) < zero_v) {
+            if (dtheta_cur < spin_dtheta && std::abs(ref_traj_[best_idx].v) < zero_v) {
                 best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
             }
             break;
-        default:    // bicycle
-            if (std::hypot(dx_cur, dy_cur) < min_d && dtheta_cur < 0.2) {
+        default:    // bicycle  dtheta_cur < 0.2
+            if (std::hypot(dx_cur, dy_cur) < min_d && dtheta_cur < bi_dtheta) {
                 best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
             }
             break;

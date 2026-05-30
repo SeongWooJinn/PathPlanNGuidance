@@ -75,7 +75,8 @@ void visualize_tracking_performance(
     const std::vector<State>& tracked_path, // MPC가 실제로 주행한 궤적 추가
     GridMap<int>& occ_map,
     int cell_size, double r_length, double r_width,
-    std::string title, double resolution);
+    std::string title, double resolution,
+	double px_scale, double origin_x, double origin_y);
 ///////////////////////////////////////////////////
 ///////////////// ROS2 VISUALIZE //////////////////
 ///////////////////////////////////////////////////

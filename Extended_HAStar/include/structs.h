@@ -16,10 +16,10 @@ enum class VehicleMode : int
 {
     // 무조건 0부터 시작
     BicycleMode = 0,
-    //SpinMode = 1,
-    //ParallelMode = 2
-    ParallelMode = 1,
-    SpinMode = 2,
+    SpinMode = 1,
+    ParallelMode = 2,
+    // ParallelMode = 1,
+    // SpinMode = 2,
     COUNT       // 단지 enum class 요소 개수를 파악하기 위한 요소
 };
 
@@ -94,7 +94,6 @@ struct GridMap
     inline T& operator()(int y, int x) { return data_(y, x); }
     inline const T& operator()(int y, int x) const { return data_(y, x); }
 };
-#pragma once
 
 // ROBOT CONFIG
 struct RobotConfigs
@@ -152,15 +151,17 @@ struct MpcResultLog {
 };
 #pragma pack(pop)
 
+// For map share to controller packages
 struct mapInfo
 {
     double cell_size;     // 픽셀 비율 
     double r_length;       // 로봇 길이
     double r_width;        // 로봇 폭
     double resolution;     // 맵 해상도
-    int rows, cols;
     double sx, sy; 
     double gx, gy;
+    double px_scale, origin_x, origin_y;
+    GridMap<int> map;
 };
 
 // enum class 연산자 오버로딩
@@ -173,6 +174,9 @@ inline std::ostream& operator<<(std::ostream& os, VehicleMode v) {
     return os;
 }
 
+///////////////////////////////////////////////////
+///////// .bin save/load helper funcions //////////
+///////////////////////////////////////////////////
 // .bin save function
 inline void savePathToBin(const std::vector<State>& path, const std::string& filename) {
     // ios::binary 플래그를 사용하여 바이너리 쓰기 모드로 파일 열기
@@ -217,8 +221,33 @@ inline void saveMapInfoToBin(const mapInfo& log_data, const std::string& filenam
         std::cerr << "MapInfo 파일 저장 실패: " << filename << std::endl;
         return;
     }
-    // vector의 메모리 시작 주소부터 전체 크기만큼 단숨에 쓰기
-    out.write(reinterpret_cast<const char*>(&log_data), sizeof(mapInfo));
+
+    out.write(reinterpret_cast<const char*>(&log_data.cell_size), sizeof(int));
+    out.write(reinterpret_cast<const char*>(&log_data.r_length), sizeof(double));
+    out.write(reinterpret_cast<const char*>(&log_data.r_width), sizeof(double));
+    out.write(reinterpret_cast<const char*>(&log_data.resolution), sizeof(double));
+    out.write(reinterpret_cast<const char*>(&log_data.sx), sizeof(int));
+    out.write(reinterpret_cast<const char*>(&log_data.sy), sizeof(int));
+    out.write(reinterpret_cast<const char*>(&log_data.gx), sizeof(int));
+    out.write(reinterpret_cast<const char*>(&log_data.gy), sizeof(int));
+
+    int rows = log_data.map.rows();
+    int cols = log_data.map.cols();
+    out.write(reinterpret_cast<const char*>(&rows), sizeof(int));
+    out.write(reinterpret_cast<const char*>(&cols), sizeof(int));
+
+    double px_scale = log_data.map.pixel_scale_;
+    double origin_x = log_data.map.origin_x_;
+    double origin_y = log_data.map.origin_y_;
+    out.write(reinterpret_cast<const char*>(&px_scale), sizeof(double));
+    out.write(reinterpret_cast<const char*>(&origin_x), sizeof(double));
+    out.write(reinterpret_cast<const char*>(&origin_y), sizeof(double));
+
+    int num_elements = rows * cols;
+    if (rows > 0 && cols > 0) {
+        out.write(reinterpret_cast<const char*>(log_data.map.data_.data()), num_elements * sizeof(int));
+    }
+    
     out.close();
     std::cout << "MapInfo가 " << filename << " 에 바이너리로 저장되었습니다." << std::endl;
 
@@ -231,9 +260,35 @@ inline bool loadMapInfoFromBin(mapInfo& log_data, const std::string& filename) {
     }
 
     // 파일에서 구조체 크기만큼 읽어서 log_data 메모리에 덮어쓰기
-    in.read(reinterpret_cast<char*>(&log_data), sizeof(mapInfo));
+    in.read(reinterpret_cast<char*>(&log_data.cell_size), sizeof(int));
+    in.read(reinterpret_cast<char*>(&log_data.r_length), sizeof(double));
+    in.read(reinterpret_cast<char*>(&log_data.r_width), sizeof(double));
+    in.read(reinterpret_cast<char*>(&log_data.resolution), sizeof(double));
+    in.read(reinterpret_cast<char*>(&log_data.sx), sizeof(int));
+    in.read(reinterpret_cast<char*>(&log_data.sy), sizeof(int));
+    in.read(reinterpret_cast<char*>(&log_data.gx), sizeof(int));
+    in.read(reinterpret_cast<char*>(&log_data.gy), sizeof(int));
+
+    int rows, cols;
+    in.read(reinterpret_cast<char*>(&rows), sizeof(int));
+    in.read(reinterpret_cast<char*>(&cols), sizeof(int));
+
+    double px_scale, origin_x, origin_y;
+    in.read(reinterpret_cast<char*>(&log_data.px_scale), sizeof(double));
+    in.read(reinterpret_cast<char*>(&log_data.origin_x), sizeof(double));
+    in.read(reinterpret_cast<char*>(&log_data.origin_y), sizeof(double));
+
+    // [C] Eigen Matrix 메모리 재할당 및 실제 데이터 복원
+    if (rows > 0 && cols > 0) {
+        // resize()를 호출하여 읽어들일 크기만큼 메모리를 동적 할당합니다.
+        log_data.map.data_.resize(rows, cols);
+        
+        int num_elements = rows * cols;
+        // 할당된 메모리 공간에 바이너리 데이터를 덮어씌웁니다.
+        in.read(reinterpret_cast<char*>(log_data.map.data_.data()), num_elements * sizeof(int));
+    }
     in.close();
-    
+    std::cout << "MapInfo 결과 파일 열기 성공: " << filename << std::endl;
     return true;
 }
 

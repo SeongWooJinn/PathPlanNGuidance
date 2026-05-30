@@ -23,7 +23,9 @@ public:
     virtual bool getRefTraj(
         std::vector<State>& global_path, double v_max,
         double a_lat_max, double a_acc_mag, double a_dec_mag, double dt) = 0;
-    virtual int updateSlidingWindow(const double* curr, VehicleMode& curr_mode, double min_d, double zero_v) = 0;
+    virtual int updateSlidingWindow(const double* curr, VehicleMode& curr_mode, 
+        double min_d, double zero_v,
+        double bi_dtheta, double spin_dtheta) = 0;
     virtual bool isGuidanceFinished(const double* curr) = 0;
 
     virtual void setInitialGuess(double* x_init, double* u_init) = 0;  // double* x_init처럼 배열(포인터)로, 초기 예상 궤적 세팅
