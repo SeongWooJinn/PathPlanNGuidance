@@ -216,13 +216,13 @@ inline ReferenceTraj hermiteSplineinterpolateState(
     }
 
     // 이전 모드(Spin)의 조향각이 새 모드(Bicycle)로 오염되는 것을 완벽 차단
-    if(pt1.mode != pt2.mode) {
-        new_pt.delta = pt2.delta;
-    }
-    else {
-        new_pt.delta = (1.0 - r) * pt1.delta + r * pt2.delta;
-    }
-    // new_pt.delta = (1.0 - r) * pt1.delta + r * pt2.delta;
+    // if(pt1.mode != pt2.mode) {
+    //     new_pt.delta = pt2.delta;
+    // }
+    // else {
+    //     new_pt.delta = (1.0 - r) * pt1.delta + r * pt2.delta;
+    // }
+    new_pt.delta = (1.0 - r) * pt1.delta + r * pt2.delta;
     new_pt.v = (1.0 - r) * pt1.v + r * pt2.v;
 
     return new_pt;
@@ -242,11 +242,21 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
         double dy = spatial_path[i].y - spatial_path[i-1].y;
         double ds = std::hypot(dx, dy);
 
+        // // 🌟 핵심: 물리적 거리가 0인 SpinMode 구간에 '가상 거리' 부여
+        if (spatial_path[i].mode == VehicleMode::SpinMode) {
+            double dtheta = std::abs(normalizeAngle(spatial_path[i].theta - spatial_path[i-1].theta));
+            if (dtheta > 0.05) {
+                ds = dtheta * 1.0; // 1라디안 회전을 1m 전진과 동일하게 취급
+            } else {
+                ds = 0.1; // 제자리 버퍼
+            }
+        }
         s_spatial[i] = s_spatial[i-1] + ds;
     }
     double total_distance = s_spatial.back();
 
     // 2. 초기점(t=0) 세팅
+    // std::cout << "222 : " << spatial_path[0].mode << std::endl;
     ReferenceTraj first_pt = hermiteSplineinterpolateState(spatial_path[0], spatial_path[1], 0.0);
     first_pt.a = 0.0;
     first_pt.delta_dot = 0.0;

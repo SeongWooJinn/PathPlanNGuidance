@@ -151,6 +151,16 @@ void OccMap::generate_example_map_v3(int num_rnd_obs, const int& sc_, const int&
 	init_map();
 	try
 	{
+		// around
+		for (int r = 0; r < rows_; ++r) {
+			setObstacles(r, 0);
+			setObstacles(rows_ - 1, 0);
+		}
+		for (int c = 0; c < cols_; ++c) {
+			setObstacles(0, c);
+			setObstacles(0, cols_ - 1);
+		}
+		// meterToIndex no needed
 		meterToIndex(18.0, rows_, 3.0, 0.0);
 		for (int r = r_start_; r < rows_; ++r) {
 			if (r < 0 || r >= rows_) throw std::out_of_range("Obstacle cell is Out of Range");
@@ -220,6 +230,75 @@ void OccMap::generate_example_map_v3(int num_rnd_obs, const int& sc_, const int&
 		std::cout << e.what() << "\n";
 	}
 }
+
+void OccMap::generate_multi_homotopy_map(int num_rnd_obs,
+    const int& sc_, const int& sr_, const int& gc_, const int& gr_) {
+
+	try
+	{
+		init_map();
+
+		// around
+		for (int r = 0; r < rows_; ++r) {
+			setObstacles(r, 0);
+			setObstacles(rows_ - 1, 0);
+		}
+		for (int c = 0; c < cols_; ++c) {
+			setObstacles(0, c);
+			setObstacles(0, cols_ - 1);
+		}
+		// 1/4 장애물 (두 경로 생성)
+		for (int r = 0; r < rows_; ++r) {
+			if (r > rows_/3 && r < 2*rows_/3) continue; // 가운데 통로
+			setObstacles(r, cols_/4);
+		}
+		// 왼쪽 좁은 경로
+		for (int r = rows_/3; r < 2*rows_/3; ++r) {
+			setObstacles(r, cols_/4 - 8);
+		}
+		// 오른쪽 넓은 경로
+		for (int r = rows_/3; r < 2*rows_/3; ++r) {
+			setObstacles(r, cols_/4 + 8);
+		}
+
+		// 중앙 장애물 (두 경로 생성)
+		for (int r = 0; r < rows_; ++r) {
+			if (r > rows_/3 && r < 2*rows_/3) continue; // 가운데 통로
+			setObstacles(r, cols_/2);
+		}
+		// 왼쪽 좁은 경로
+		for (int r = rows_/3; r < 2*rows_/3; ++r) {
+			setObstacles(r, cols_/2 - 8);
+		}
+		// 오른쪽 넓은 경로
+		for (int r = rows_/3; r < 2*rows_/3; ++r) {
+			setObstacles(r, cols_/2 + 8);
+		}
+
+		// 3/4 장애물 (두 경로 생성)
+		for (int r = 0; r < rows_; ++r) {
+			if (r > rows_/3 && r < 2*rows_/3) continue; // 가운데 통로
+			setObstacles(r, 3*cols_/4);
+		}
+		// 왼쪽 좁은 경로
+		for (int r = rows_/3; r < 2*rows_/3; ++r) {
+			setObstacles(r, 3*cols_/4 - 8);
+		}
+		// 오른쪽 넓은 경로
+		for (int r = rows_/3; r < 2*rows_/3; ++r) {
+			setObstacles(r, 3*cols_/4 + 8);
+		}
+
+		getRandomObs(num_rnd_obs, sr_, sc_, gr_, gc_);
+
+	}
+	catch (const std::exception& e)
+    {
+        std::cout << "[Map Generation Error] " << e.what() << "\n";
+    }
+}
+
+
 GridMap<int>& OccMap::getOccMap() {
 	return occ_map_;
 }

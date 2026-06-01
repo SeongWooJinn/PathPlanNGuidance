@@ -61,6 +61,7 @@ public:
             spatial_ref[i].delta = global_path[i].steering;
             spatial_ref[i].v = (global_path[i].gear == 0) ? v_max : -v_max;
             spatial_ref[i].mode = global_path[i].vehicle;
+            // std::cout << spatial_ref[0].mode << std::endl;
             // 모드 전환 or 기어 전환 지점에서는 v = 0
             if (i > 0) {
                 bool mode_changed = (spatial_ref[i].mode != spatial_ref[i-1].mode);
@@ -106,6 +107,8 @@ public:
         //     std::cout << i << ": "<< spatial_ref[i].v << std::endl;
         // }
 
+        std::cout << spatial_ref[0].mode << std::endl;
+
         // 4. 시간 기반 리샘플링, 시간 기반 궤적 계산
         ref_traj_ = resampleTimeBasedTrajectory(spatial_ref, dt);
 
@@ -123,8 +126,9 @@ public:
                 ref_traj_[i].theta = ref_traj_[i-1].theta + diff_norm;
             }
         }
-        current_closest_idx_ = 0;
+        
 
+        current_closest_idx_ = 0;
         std::cout << "글로벌 경로 변환 완료: " << ref_traj_.size() << std::endl;
 
         // std::cout << "x, y, theta, v, a, delta_dot" << std::endl;
@@ -145,7 +149,7 @@ public:
         // 거리기반 인덱스 탐색
         double min_dist = 1e10;
         int best_idx = current_closest_idx_;
-        int search_limit = std::min(current_closest_idx_ + 100, (int)ref_traj_.size());
+        int search_limit = std::min(current_closest_idx_ + 10, (int)ref_traj_.size());
         for (int i = current_closest_idx_; i < search_limit; ++i) {
             double dist = calcDistance(curr[0], curr[1], ref_traj_[i].x, ref_traj_[i].y);
             // double dtheta = std::abs(normalizeAngle(curr[2] - ref_traj_[i].theta));

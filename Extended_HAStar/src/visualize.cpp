@@ -353,8 +353,12 @@ void visualize_tracking_performance(
 			mode_color = Color::Blue;
 
         // // 실제 이동한 궤적 선 (파란색 등 눈에 띄는 색상)
-        // int p2x = occ_map.WorldXToXi(tracked_path[i].x);
-        // int p2y = occ_map.WorldYToYi(tracked_path[i].y);
+        // int p2x = [&](double p) {
+		// 		return static_cast<int>(floor( (p - origin_x) / px_scale));
+		// 	}(tracked_path[i].x);
+        // int p2y = [&](double p) {
+		// 		return static_cast<int>(floor( (p - origin_y) / px_scale));
+		// 	}(tracked_path[i].y);
         // cv::line(img, 
         //          cv::Point(p1x * cell_size, p1y * cell_size), 
         //          cv::Point(p2x * cell_size, p2y * cell_size), 

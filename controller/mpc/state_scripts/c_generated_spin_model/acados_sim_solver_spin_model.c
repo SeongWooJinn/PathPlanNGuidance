@@ -183,6 +183,8 @@ int spin_model_acados_sim_create(spin_model_sim_solver_capsule * capsule)
     /* initialize parameter values */
     double* p = calloc(np, sizeof(double));
     
+    p[0] = 10000;
+    p[1] = 10000;
 
     spin_model_acados_sim_update_params(capsule, p, np);
     free(p);

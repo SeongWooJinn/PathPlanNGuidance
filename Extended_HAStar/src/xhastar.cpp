@@ -40,12 +40,11 @@ void HybridAStar::registVehicleMode(std::unique_ptr<IVehicleMode> vehicle)
     if (vehicles_look_up_.size() <= idx) {
         vehicles_look_up_.resize(idx + 1, nullptr);
     }
+
     vehicles_look_up_[idx] = vehicle_ptr;
-    for (const IVehicleMode* lu : vehicles_look_up_)
-    {
-        std::cout << lu->getModeType() << std::endl;
-    }
+    std::cout << "[Success] Regist vehicle mode : " << mode << std::endl;
 }
+
 // 차량 look up table 접근
 IVehicleMode* HybridAStar::getVehicleLUT(VehicleMode mode)
 {

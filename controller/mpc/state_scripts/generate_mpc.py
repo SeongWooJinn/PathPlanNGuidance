@@ -68,11 +68,13 @@ def generate_mpc(model):
     # 제약 조건 (Constraints): 로봇의 물리적 한계
     # idxbu : 제어 입력 index
     # reference : nav2_params.yaml -> controller_server
-    ocp.constraints.lbu = np.array([-3.0, -1.0]) # a, delta_dot(or omega_dot) 최소
-    ocp.constraints.ubu = np.array([ 3.0,  1.0]) # a, delta_dot(or omega_dot) 최대
+    a_limit = 4.0           # 실제 a max(in cpp code)보다 크게 설정
+    delta_dot_limit = 2.0   # 실제 delta_dot max(in cpp code)보다 크게 설정
+    ocp.constraints.lbu = np.array([-a_limit, -delta_dot_limit]) # a, delta_dot(or omega_dot) 최소
+    ocp.constraints.ubu = np.array([ a_limit,  delta_dot_limit]) # a, delta_dot(or omega_dot) 최대
     ocp.constraints.idxbu = np.array([0, 1])     # 0th idx : a, 1st idx : delta_dot (omega_dot)   
 
-    v_limit = 0.6   # 실제 v max보다 크게 설정
+    v_limit = 0.6   # 실제 v(c++) max보다 크게 설정
 
     # idxbx : 상태 변수 index
     # reference : nav2_params.yaml -> ExtendedHybridAStar

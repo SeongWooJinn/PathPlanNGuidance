@@ -398,6 +398,8 @@ void parallel_model_acados_create_set_default_parameters(parallel_model_solver_c
     const int N = capsule->nlp_solver_plan->N;
     // initialize parameters to nominal value
     double* p = calloc(NP, sizeof(double));
+    p[0] = 10000;
+    p[1] = 10000;
 
     for (int i = 0; i <= N; i++) {
         parallel_model_acados_update_params(capsule, i, p, NP);
@@ -738,10 +740,10 @@ void parallel_model_acados_setup_nlp_in(parallel_model_solver_capsule* capsule, 
     double* lubu = calloc(2*NBU, sizeof(double));
     double* lbu = lubu;
     double* ubu = lubu + NBU;
-    lbu[0] = -3;
-    ubu[0] = 3;
-    lbu[1] = -1;
-    ubu[1] = 1;
+    lbu[0] = -4;
+    ubu[0] = 4;
+    lbu[1] = -2;
+    ubu[1] = 2;
 
     for (int i = 0; i < N; i++)
     {

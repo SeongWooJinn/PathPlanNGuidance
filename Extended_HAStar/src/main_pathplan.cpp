@@ -14,7 +14,7 @@ int main() {
     // [meter unit]
     double map_height = 30.0;
     double map_width = 60.0;
-    double resolution = 0.2; //1.0;
+    double resolution = 0.4; //1.0;
     double sx = 5.0; double sy = 2.0; double stheta = 1.5 * M_PI; int sgear = 0.0; VehicleMode smode = VehicleMode::BicycleMode;
     double gx = 40.0; double gy = 8.0; double gtheta = 0.0 * M_PI;
     // double gx = 24.0; double gy = 25.0; double gtheta = 1.0 * M_PI;
@@ -115,6 +115,8 @@ int main() {
     // OccMap gt(rows, cols);
     OccMap gt(rows, cols, resolution);
     gt.generate_example_map_v3(rnd_obs, sx, sy, gx, gy);
+    // gt.generate_multi_homotopy_map(rnd_obs, sx, sy, gx, gy);
+    // gt.generate_warehouse_map(rnd_obs, sx, sy, gx, gy);
     // visualize_map(gt.getOccMap(), 10, sx, sy, gx, gy, "Occ Map", resolution);
 
     // ------------------ Cost map setting ------------------

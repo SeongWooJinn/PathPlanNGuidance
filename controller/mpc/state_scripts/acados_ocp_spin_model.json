@@ -72,8 +72,8 @@
         "idxsphi_0": [],
         "idxsphi_e": [],
         "lbu": [
-            -3.0,
-            -1.0
+            -4.0,
+            -2.0
         ],
         "lbx": [
             0.0,
@@ -110,8 +110,8 @@
         "lsphi_0": [],
         "lsphi_e": [],
         "ubu": [
-            3.0,
-            1.0
+            4.0,
+            2.0
         ],
         "ubx": [
             0.0,
@@ -479,7 +479,7 @@
         "spin_model_cost/spin_model_cost_y_e_fun_jac_ut_xt.c",
         "spin_model_cost/spin_model_cost_y_e_hess.c"
     ],
-    "hash": "ed5b9676075d5e07653c9f3bdcad29e1",
+    "hash": "e1f2c5a91e00b4ed5ae60b8f596ae2b8",
     "model": {
         "con_h_expr": [],
         "con_h_expr_0": [],
@@ -567,8 +567,8 @@
     "name": "spin_model",
     "p_global_values": [],
     "parameter_values": [
-        0.0,
-        0.0
+        10000.0,
+        10000.0
     ],
     "problem_class": "OCP",
     "ros_opts": null,

@@ -25,8 +25,8 @@ int main()
     double a_dec_mag = 3.0;//0.1;    // 최대 감속도 크기 (양수로 입력, 브레이크 성능)
     double a_max = 3.0;        // 최대 가속도 크기
     double dt = 5.0 / 150.0;          // MPC 제어 주기 generate_mpc.py -> Tf / N
-    double zero_velocity_thres = std::max(0.01, dt * a_max); //dt * a_dec_mag;
     double min_dist_thres = 10 * v_max * dt;    // 20 * 0.35
+    double zero_velocity_thres = std::max(0.01, dt * a_max); //dt * a_dec_mag;
 
     // 로봇 하드웨어 제원 (실제 차량 스펙에 맞게 수정)
     double wheelbase = 1.0;       // 축간 거리 L (m)
@@ -34,9 +34,14 @@ int main()
     double omega_max = 0.35;       // 제자리 최대 회전 각속도 (rad/s), generate_mpc.py
 
     // 동적 각도 임계값 계산 (마진 1.5배 적용, 최소 0.02 rad 보장)
-    double spin_dtheta_thres = std::max(0.02, omega_max * dt * 1.5);
+    double spin_dtheta_thres = std::max(0.05, omega_max * dt * 1.5);
     // 자전거 모드는 최대 속도에서 최대 조향을 꺾었을 때 변하는 각도가 기준
     double bi_dtheta_thres = std::max(0.05, (v_max * std::tan(delta_max) / wheelbase) * dt * 1.5);
+
+    std::cout << "min_dist_thres: " << min_dist_thres 
+              << ", " << "zero_velocity_thres: " << zero_velocity_thres
+              << ", " << "bi_dtheta_thres: " << bi_dtheta_thres
+              << ", " << "spin_dtheta_thres: " << spin_dtheta_thres << std::endl;
 
     // get resampled reference trajectory
     if (!mpc_bi.getRefTraj(g_path, v_max, a_lat_max, a_max, a_dec_mag, dt)) return -1;
@@ -47,8 +52,14 @@ int main()
     mpc_spin.setRefTrajectoryData(resampled_traj);
 
     std::cout << "1. reference trajecotory load" << std::endl;
-    // for (int i = 0; i < 100; ++i)
-    //     std::cout << "RP : " << resampled_traj[i].mode << std::endl;
+
+    // for (int i = 3268; i < 3280; ++i)
+    //     std::cout << "i : "<< i << ", " 
+    //               << "v : " << resampled_traj[i].v << ", " 
+    //               << "theta : " << resampled_traj[i].theta << ", "  
+    //               << "a : " << resampled_traj[i].a << ", " 
+    //               << "delta : " << resampled_traj[i].delta << ", " 
+    //               << "delta_dot : " << resampled_traj[i].delta_dot << std::endl;
 
     // 3. 로봇 초기 위치 (테스트용, g_path의 시작점)
     double current_x[5] = {
@@ -65,17 +76,18 @@ int main()
     int closest_idx = 0;
 
     std::vector<MpcResultLog> mpc_log;
+    std::cout << "init ref_traj.mode : " << resampled_traj[closest_idx].mode << std::endl;
+    bool is_action_applied = false;
+
     // 4. 제어 루프
-    VehicleMode prev_mode = resampled_traj[closest_idx].mode;
-    std::cout << "init ref_traj.mode : " << prev_mode << std::endl;
     while (closest_idx < resampled_traj.size() - 1) {
 
         VehicleMode curr_mode = resampled_traj[closest_idx].mode;
 
-        if (closest_idx != 0 && curr_mode != resampled_traj[closest_idx - 1].mode) {
-            std::cout << "mode change!! : " << resampled_traj[closest_idx - 1].mode
-                      << " --> " << curr_mode << ", idx : " << closest_idx << std::endl;
-        }
+        // if (closest_idx != 0 && curr_mode != resampled_traj[closest_idx - 1].mode) {
+        //     std::cout << "mode change!! : " << resampled_traj[closest_idx - 1].mode
+        //               << " --> " << curr_mode << ", idx : " << closest_idx << std::endl;
+        // }
 
         bool solve_success = false;     // MPC SQP최적화 연산 성공 여부
         if (curr_mode == VehicleMode::BicycleMode)
@@ -141,11 +153,68 @@ int main()
                 mpc_spin.getControlInput(current_u);
             }
         }
-
+        
         if (!solve_success){
-            std::cerr << "MPC 최적화 연산 실패!" << std::endl;
-            break;
+            std::cerr << "[Warning] MPC 최적화 연산 실패! Recovery FSM 가동" << std::endl;
+
+            // A. 부드러운 감속 로직 (P-Control 기반)
+            double current_v = current_x[3]; // 현재 차량 속도
+            if (std::abs(current_v) > 0.01) {
+                // 속도의 반대 방향으로 브레이크를 밟되, 현재 속도에 비례하게 밟음 (최대 a_dec_mag 제한)
+                double brake_force = (current_v > 0) ? -std::abs(current_v) * 2.0 : std::abs(current_v) * 2.0;
+                
+                // 가속도 한계 클램핑
+                if (brake_force > a_max) brake_force = a_max;
+                if (brake_force < -a_dec_mag) brake_force = -a_dec_mag;
+                
+                current_u[0] = brake_force;
+            } else {
+                // 이미 거의 정지 상태라면 가속도를 0으로 만들어 역주행 방지
+                current_u[0] = 0.0;
+                current_x[3] = 0.0; // 미세한 속도 찌꺼기 제거
+            }
+
+            // B. 조향각 복원 로직 (핸들 천천히 중앙으로 풀기)
+            double current_delta = current_x[4];
+            if (std::abs(current_delta) > 0.05) {
+                // 핸들이 꺾여있다면 중앙(0)을 향해 조향 각속도 인가
+                double return_speed = (current_delta > 0) ? -0.5 : 0.5; // rad/s (초당 약 30도씩 풀기)
+                current_u[1] = return_speed;
+            } else {
+                current_u[1] = 0.0;
+            }
+
+            // 2. Recovery 상태 머신 (is_action_applied 플래그로 상태 전환 제어)
+            if (!is_action_applied) {
+                std::cout << "Recovery Step 1: 솔버 내부 메모리(Warm Start) 강제 초기화" << std::endl;
+                // 이전 스텝의 꼬여버린 예측 해를 현재 위치 기준으로 깨끗하게 덮어씌움
+                if (curr_mode == VehicleMode::BicycleMode) 
+                    mpc_bi.setInitialGuess(current_x, current_u);
+                else if (curr_mode == VehicleMode::ParallelMode) 
+                    mpc_parallel.setInitialGuess(current_x, current_u);
+                else 
+                    mpc_spin.setInitialGuess(current_x, current_u);
+                
+                is_action_applied = true; // 조치가 적용되었음을 마킹하여 다음 상태로 전환 준비
+            } else {
+                std::cout << "Recovery Step 2: 초기화로도 실패. 타겟 인덱스 강제 스킵 (Deadlock 탈출)" << std::endl;
+                // 장애물이나 극단적 곡률로 인해 특정 인덱스에서 막혔다면 억지로 한 칸 넘김
+                closest_idx = std::min(closest_idx + 1, (int)resampled_traj.size() - 1);
+                is_action_applied = false; // 다음 루프를 위해 플래그 리셋
+            }
+
+            // 루프를 종료(break)하지 않고 다음 제어 주기로 넘어감
+            continue; 
+        } 
+        else {
+            // 연산 성공 시 복구 플래그 초기화
+            is_action_applied = false; 
         }
+
+        // if (!solve_success){
+        //     std::cerr << "MPC 최적화 연산 실패!" << std::endl;
+        //     break;
+        // }
 
         // 한 스텝 이동할 때마다 현재 상태를 track_path에 기록
         State current_state;
@@ -160,19 +229,19 @@ int main()
 
         // save mpc results
         MpcResultLog curr_mpc;
-        curr_mpc.x     = current_x[0];
-        curr_mpc.y     = current_x[1];
-        curr_mpc.theta = current_x[2];
-        curr_mpc.v     = current_x[3];
-        curr_mpc.delta = current_x[4];
-        curr_mpc.a     = current_u[0];
+        curr_mpc.x         = current_x[0];
+        curr_mpc.y         = current_x[1];
+        curr_mpc.theta     = current_x[2];
+        curr_mpc.v         = current_x[3];
+        curr_mpc.delta     = current_x[4];
+        curr_mpc.a         = current_u[0];
         curr_mpc.delta_dot = current_u[1];
         mpc_log.emplace_back(curr_mpc);
 
-        // std::cout << "추종 인덱스: " << closest_idx << " | mode: " << curr_mode
-        //           << " | 현재 상태 X: " << current_x[0] << ", Y: " << current_x[1] 
-        //           << " , Theta: " << current_x[2] << ", v: " << current_x[3] << ", delta: " << current_x[4] 
-        //           << " | 제어 입력 a: " << current_u[0] << ", delta_dot: " << current_u[1] << std::endl;
+        std::cout << "추종 인덱스: " << closest_idx << " | mode: " << curr_mode
+                  << " | 현재 상태 X: " << current_x[0] << ", Y: " << current_x[1] 
+                  << " , Theta: " << current_x[2] << ", v: " << current_x[3] << ", delta: " << current_x[4] 
+                  << " | 제어 입력 a: " << current_u[0] << ", delta_dot: " << current_u[1] << std::endl;
 
     }
 

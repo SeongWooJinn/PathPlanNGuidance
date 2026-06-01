@@ -72,8 +72,8 @@
         "idxsphi_0": [],
         "idxsphi_e": [],
         "lbu": [
-            -3.0,
-            -1.0
+            -4.0,
+            -2.0
         ],
         "lbx": [
             -0.6,
@@ -110,8 +110,8 @@
         "lsphi_0": [],
         "lsphi_e": [],
         "ubu": [
-            3.0,
-            1.0
+            4.0,
+            2.0
         ],
         "ubx": [
             0.6,
@@ -479,7 +479,7 @@
         "parallel_model_cost/parallel_model_cost_y_e_fun_jac_ut_xt.c",
         "parallel_model_cost/parallel_model_cost_y_e_hess.c"
     ],
-    "hash": "5f621599fd9242064268f45af738f96e",
+    "hash": "00cd650bed1bdff49245b3ce1ee4bbe4",
     "model": {
         "con_h_expr": [],
         "con_h_expr_0": [],
@@ -567,8 +567,8 @@
     "name": "parallel_model",
     "p_global_values": [],
     "parameter_values": [
-        0.0,
-        0.0
+        10000.0,
+        10000.0
     ],
     "problem_class": "OCP",
     "ros_opts": null,
