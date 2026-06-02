@@ -207,9 +207,12 @@ void visualize_map(
 	cv::putText(img, "Goal", cv::Point(legend_x0 + 30, legend_y0 + 15 + step),
 		cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0), 1);
 
-	cv::imshow(title, img);
-	// cv::waitKey(3000);
-	cv::waitKey(3);
+	// cv::imshow(title, img);
+	// cv::waitKey(10);
+	fs::path dir("/home/uj");
+	fs::path name = title + ".png";
+	fs::path path_img = dir / name;
+	cv::imwrite(path_img.string(), img);
 }
 
 void visualize_guide_path(

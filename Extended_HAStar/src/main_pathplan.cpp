@@ -15,8 +15,8 @@ int main() {
     double map_height = 30.0;
     double map_width = 60.0;
     double resolution = 0.4; //1.0;
-    double sx = 5.0; double sy = 2.0; double stheta = 1.5 * M_PI; int sgear = 0.0; VehicleMode smode = VehicleMode::BicycleMode;
-    double gx = 40.0; double gy = 8.0; double gtheta = 0.0 * M_PI;
+    double sx = 5.0; double sy = 2.0; double stheta = 0.5 * M_PI; int sgear = 0.0; VehicleMode smode = VehicleMode::BicycleMode;
+    double gx = 46.0; double gy = 17.0; double gtheta = 0.5 * M_PI;
     // double gx = 24.0; double gy = 25.0; double gtheta = 1.0 * M_PI;
 
     //double gx = 35.0; double gy = 8.0; double gtheta = 1.0 * M_PI;
@@ -114,10 +114,10 @@ int main() {
     // ------------------ Example map setting ------------------
     // OccMap gt(rows, cols);
     OccMap gt(rows, cols, resolution);
-    gt.generate_example_map_v3(rnd_obs, sx, sy, gx, gy);
+    // gt.generate_example_map_v3(rnd_obs, sx, sy, gx, gy);
     // gt.generate_multi_homotopy_map(rnd_obs, sx, sy, gx, gy);
-    // gt.generate_warehouse_map(rnd_obs, sx, sy, gx, gy);
-    // visualize_map(gt.getOccMap(), 10, sx, sy, gx, gy, "Occ Map", resolution);
+    gt.generate_parking_lot_map(rnd_obs, sx, sy, gx, gy);
+    visualize_map(gt.getOccMap(), 10, sx, sy, gx, gy, "Occ Map", resolution);
 
     // ------------------ Cost map setting ------------------
     GridMap<double> cost_w(rows, cols, resolution);

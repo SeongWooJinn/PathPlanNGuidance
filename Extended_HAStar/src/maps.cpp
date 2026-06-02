@@ -238,7 +238,8 @@ void OccMap::generate_multi_homotopy_map(int num_rnd_obs,
 	{
 		init_map();
 
-		// around
+		//////////////////////////////////////////////////////
+		// map boundary
 		for (int r = 0; r < rows_; ++r) {
 			setObstacles(r, 0);
 			setObstacles(rows_ - 1, 0);
@@ -247,47 +248,94 @@ void OccMap::generate_multi_homotopy_map(int num_rnd_obs,
 			setObstacles(0, c);
 			setObstacles(0, cols_ - 1);
 		}
-		// 1/4 장애물 (두 경로 생성)
+
+		// ---------------- 1 / 4 구역 ----------------
+		// 1/4 장애물 (두 경로 생성)(row)
 		for (int r = 0; r < rows_; ++r) {
 			if (r > rows_/3 && r < 2*rows_/3) continue; // 가운데 통로
 			setObstacles(r, cols_/4);
 		}
-		// 왼쪽 좁은 경로
+		// 왼쪽 장애물(row)
 		for (int r = rows_/3; r < 2*rows_/3; ++r) {
 			setObstacles(r, cols_/4 - 8);
 		}
-		// 오른쪽 넓은 경로
+		// 오른쪽 장애물(row)
 		for (int r = rows_/3; r < 2*rows_/3; ++r) {
 			setObstacles(r, cols_/4 + 8);
 		}
+		// 상단 장애물(col)
+		for (int c = cols_/16; c < cols_/4 - 8; ++c) {
+			setObstacles(rows_/6, c);
+		}
+		// 하단 장애물(col)
+		for (int c = cols_/16; c < cols_/4 - 8; ++c) {
+			setObstacles(5*rows_/6, c);
+		}
+		// 맨 왼쪽 장애물
+		for (int r = rows_/3; r < 2*rows_/3; ++r) {
+			setObstacles(r, cols_/16);
+		}
 
+		// ---------------- 2 / 4 구역 ----------------
 		// 중앙 장애물 (두 경로 생성)
 		for (int r = 0; r < rows_; ++r) {
 			if (r > rows_/3 && r < 2*rows_/3) continue; // 가운데 통로
 			setObstacles(r, cols_/2);
 		}
-		// 왼쪽 좁은 경로
+		// 왼쪽 장애물
 		for (int r = rows_/3; r < 2*rows_/3; ++r) {
 			setObstacles(r, cols_/2 - 8);
 		}
-		// 오른쪽 넓은 경로
+		// 오른쪽 장애물
 		for (int r = rows_/3; r < 2*rows_/3; ++r) {
 			setObstacles(r, cols_/2 + 8);
 		}
+		// 상단 장애물(col)
+		for (int c = cols_/4 + 8; c < cols_/2 - 8; ++c) {
+			setObstacles(rows_/6, c);
+		}
+		// 하단 장애물(col)
+		for (int c = cols_/4 + 8; c < cols_/2 - 8; ++c) {
+			setObstacles(5*rows_/6, c);
+		}
 
+		// ---------------- 3 / 4 구역 ----------------
 		// 3/4 장애물 (두 경로 생성)
 		for (int r = 0; r < rows_; ++r) {
 			if (r > rows_/3 && r < 2*rows_/3) continue; // 가운데 통로
 			setObstacles(r, 3*cols_/4);
 		}
-		// 왼쪽 좁은 경로
+		// 왼쪽 장애물
 		for (int r = rows_/3; r < 2*rows_/3; ++r) {
 			setObstacles(r, 3*cols_/4 - 8);
 		}
-		// 오른쪽 넓은 경로
+		// 오른쪽 장애물
 		for (int r = rows_/3; r < 2*rows_/3; ++r) {
 			setObstacles(r, 3*cols_/4 + 8);
 		}
+		// 상단 장애물(col)
+		for (int c = cols_/2 + 8; c < 3*cols_/4 - 8; ++c) {
+			setObstacles(rows_/6, c);
+		}
+		// 하단 장애물(col)
+		for (int c = cols_/2 + 8; c < 3*cols_/4 - 8; ++c) {
+			setObstacles(5*rows_/6, c);
+		}
+
+		// ---------------- 4 / 4 구역 ----------------
+		// 상단 장애물(col)
+		for (int c = 3*cols_/4 + 8; c < 15*cols_/16; ++c) {
+			setObstacles(rows_/6, c);
+		}
+		// 하단 장애물(col)
+		for (int c = 3*cols_/4 + 8; c < 15*cols_/16; ++c) {
+			setObstacles(5*rows_/6, c);
+		}
+		// 맨 오른쪽 장애물
+		for (int r = rows_/3; r < 2*rows_/3; ++r) {
+			setObstacles(r, 15*cols_/16);
+		}
+		//////////////////////////////////////////////////////
 
 		getRandomObs(num_rnd_obs, sr_, sc_, gr_, gc_);
 
@@ -297,7 +345,65 @@ void OccMap::generate_multi_homotopy_map(int num_rnd_obs,
         std::cout << "[Map Generation Error] " << e.what() << "\n";
     }
 }
+void OccMap::generate_parking_lot_map(int num_rnd_obs,
+    const int& sc_, const int& sr_, const int& gc_, const int& gr_) {
 
+    try
+    {
+        init_map();
+
+        //////////////////////////////////////////////////////
+        // 1. Map Boundary (맵 테두리)
+        for (int r = 0; r < rows_; ++r) {
+            setObstacles(r, 0);
+            setObstacles(r, cols_ - 1); // 우측 테두리 인덱스 수정 (원래 코드 버그 방지)
+        }
+        for (int c = 0; c < cols_; ++c) {
+            setObstacles(0, c);
+            setObstacles(rows_ - 1, c);
+        }
+
+		int rcnt = 6;
+		int ccnt = 16;
+		// ------------ Entrance ------------
+        for (int r = 1*rows_/rcnt; r < 2*rows_/rcnt; ++r) {
+			removeObstacles(r, 0);
+        }
+
+		// ------------ upper parking lots ------------
+        for (int r = 0; r < rows_/rcnt; ++r) {
+			for (int i = 1; i < ccnt; ++i)
+				setObstacles(r, i * cols_/ccnt);
+		}
+
+		// ------------ middle parking lots 1 ------------
+        for (int r = 2*rows_/rcnt; r < 3*rows_/rcnt; ++r) {
+			for (int i = 3; i < ccnt; ++i)
+				setObstacles(r, i * cols_/ccnt);
+		}
+		// ------------ center line ------------
+		for (int c = 3*cols_/ccnt; c < cols_; ++c)
+			setObstacles(rows_/2, c);
+		// ------------ middle parking lots 1 ------------
+        for (int r = 3*rows_/rcnt; r < 4*rows_/rcnt; ++r) {
+			for (int i = 3; i < ccnt; ++i)
+				setObstacles(r, i * cols_/ccnt);
+		}
+
+		// ------------ lower parking lots ------------
+        for (int r = 5*rows_/rcnt; r < rows_; ++r) {
+			for (int i = 1; i < ccnt; ++i)
+				setObstacles(r, i * cols_/ccnt);
+		}
+
+        getRandomObs(num_rnd_obs, sr_, sc_, gr_, gc_);
+
+    }
+    catch (const std::exception& e)
+    {
+        std::cout << "[Map Generation Error] " << e.what() << "\n";
+    }
+}
 
 GridMap<int>& OccMap::getOccMap() {
 	return occ_map_;

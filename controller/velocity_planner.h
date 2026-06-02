@@ -20,33 +20,22 @@ inline void accelerationProfile(
     path[0].v = 0.0;
     // std::vector<double> s_spatial(path.size(), 0.0);
 
-    for(int i = 0; i < path.size(); ++i){
-        VehicleMode cur_mode = path[i].mode;
-        switch (cur_mode)
-        {
-            case VehicleMode::SpinMode:
-            {
-                path[i].v = 0.0;
-                double ds = 0;
-                // s_spatial[i] = s_spatial[i-1] + ds;
-                break;
-            }
-            default:        // parallel, bicycle
-            {
-                double dx = path[i].x - path[i-1].x;
-                double dy = path[i].y - path[i-1].y;
-                double ds = std::hypot(dx, dy);
-                // s_spatial[i] = s_spatial[i-1] + ds;
+    for(int i = 1; i < path.size(); ++i){
+        if (path[i].mode == VehicleMode::SpinMode) {
+            path[i].v = 0.0;
+            continue;
+        }
+        double dx = path[i].x - path[i-1].x;
+        double dy = path[i].y - path[i-1].y;
+        double ds = std::hypot(dx, dy);
+        // s_spatial[i] = s_spatial[i-1] + ds;
 
-                // 등가속도 운동 공식 적용, 다음 스텝의 최대 허용 속도
-                double max_v_next = std::sqrt(path[i-1].v * path[i-1].v + 2 * a_acc_mag * ds);
-                // double max_v_next = std::sqrt(path[0].v * path[0].v + 2 * a_acc_mag * s_spatial[i]);
-                double sign = (path[i].v >= 0) ? 1.0 : -1.0;
-                if (std::abs(path[i].v) > max_v_next) {
-                    path[i].v = sign * max_v_next;
-                }
-                break;
-            }
+        // 등가속도 운동 공식 적용, 다음 스텝의 최대 허용 속도
+        double max_v_next = std::sqrt(path[i-1].v * path[i-1].v + 2 * a_acc_mag * ds);
+        // double max_v_next = std::sqrt(path[0].v * path[0].v + 2 * a_acc_mag * s_spatial[i]);
+        double sign = (path[i].v >= 0) ? 1.0 : -1.0;
+        if (std::abs(path[i].v) > max_v_next) {
+            path[i].v = sign * max_v_next;
         }
 
     }
@@ -63,31 +52,20 @@ inline void decelerationProfile(
 
     // 2. 경로의 맨 끝에서부터 앞으로 오면서(역순) 역산
     for (int i = path.size() - 2; i >= 0; --i) {
-        VehicleMode cur_mode = path[i].mode;
-        switch (cur_mode)
-        {
-            case VehicleMode::SpinMode:
-            {
-                path[i].v = 0.0;
-                double ds = 0;
-                // s_spatial[i] = s_spatial[i-1] + ds;
-                break;
-            }
-            default:        // parallel, bicycle
-            {
-                double dx = path[i+1].x - path[i].x;
-                double dy = path[i+1].y - path[i].y;
-                double ds = std::hypot(dx, dy);
-                // s_spatial[i] = s_spatial[i-1] + ds;
+        if (path[i].mode == VehicleMode::SpinMode) {
+            path[i].v = 0.0;
+            continue;
+        }
+        double dx = path[i+1].x - path[i].x;
+        double dy = path[i+1].y - path[i].y;
+        double ds = std::hypot(dx, dy);
+        // s_spatial[i] = s_spatial[i-1] + ds;
 
-                // 등가속도 운동 공식 적용, 다음 스텝의 최대 허용 속도
-                double v_dec_lim = std::sqrt(path[i+1].v * path[i+1].v + 2 * a_dec_mag * ds);
-                double sign = (path[i].v >= 0) ? 1.0 : -1.0;
-                if (std::abs(path[i].v) > v_dec_lim) {
-                    path[i].v = sign * v_dec_lim;
-                }
-                break;
-            }
+        // 등가속도 운동 공식 적용, 다음 스텝의 최대 허용 속도
+        double v_dec_lim = std::sqrt(path[i+1].v * path[i+1].v + 2 * a_dec_mag * ds);
+        double sign = (path[i].v >= 0) ? 1.0 : -1.0;
+        if (std::abs(path[i].v) > v_dec_lim) {
+            path[i].v = sign * v_dec_lim;
         }
 
     }
@@ -242,7 +220,7 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
         double dy = spatial_path[i].y - spatial_path[i-1].y;
         double ds = std::hypot(dx, dy);
 
-        // // 🌟 핵심: 물리적 거리가 0인 SpinMode 구간에 '가상 거리' 부여
+        // 🌟 핵심: 물리적 거리가 0인 SpinMode 구간에 '가상 거리' 부여
         if (spatial_path[i].mode == VehicleMode::SpinMode) {
             double dtheta = std::abs(normalizeAngle(spatial_path[i].theta - spatial_path[i-1].theta));
             if (dtheta > 0.05) {
@@ -291,11 +269,34 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
 
         // 5. 미분값 추출 (a, delta_dot)
         new_pt.a = (new_pt.v - prev_pt.v) / dt;
-        // new_pt.a = std::clamp(new_pt.a, -MAX_DECEL, MAX_ACCEL);
-        
+
+        // ==========================================================
         // 조향각속도: 각도 랩어라운드(Wrap-around)를 고려하여 차이 계산
-        double diff_delta = new_pt.delta - prev_pt.delta;
-        new_pt.delta_dot = diff_delta / dt;
+        double diff_delta = normalizeAngle(new_pt.delta - prev_pt.delta);
+        double calc_delta_dot = diff_delta / dt;
+
+        // ==========================================================
+        // 🌟 마법의 필터: 조향 각속도 한계 클램핑 (순간이동 차단)
+        // ==========================================================
+        double max_steer_rate = 1.0; // 파이썬 제약(ubu)과 동일하거나 약간 작게 (rad/s)
+        
+        if (calc_delta_dot > max_steer_rate) {
+            new_pt.delta_dot = max_steer_rate;
+            // 목표치로 점프하지 못하고, 최대 속도로 꺾었을 때의 위치까지만 갱신 (지연 효과)
+            new_pt.delta = normalizeAngle(prev_pt.delta + max_steer_rate * dt); 
+        } 
+        else if (calc_delta_dot < -max_steer_rate) {
+            new_pt.delta_dot = -max_steer_rate;
+            new_pt.delta = normalizeAngle(prev_pt.delta - max_steer_rate * dt);
+        } 
+        else {
+            new_pt.delta_dot = calc_delta_dot;
+        }
+        // ==========================================================
+
+        // // 조향각속도: 각도 랩어라운드(Wrap-around)를 고려하여 차이 계산
+        // double diff_delta = new_pt.delta - prev_pt.delta;
+        // new_pt.delta_dot = diff_delta / dt;
 
         temporal_path.push_back(new_pt);
     }

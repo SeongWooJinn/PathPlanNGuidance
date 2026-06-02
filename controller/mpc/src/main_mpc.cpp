@@ -78,7 +78,7 @@ int main()
     std::vector<MpcResultLog> mpc_log;
     std::cout << "init ref_traj.mode : " << resampled_traj[closest_idx].mode << std::endl;
     bool is_action_applied = false;
-
+    
     // 4. 제어 루프
     while (closest_idx < resampled_traj.size() - 1) {
 
@@ -161,7 +161,7 @@ int main()
             double current_v = current_x[3]; // 현재 차량 속도
             if (std::abs(current_v) > 0.01) {
                 // 속도의 반대 방향으로 브레이크를 밟되, 현재 속도에 비례하게 밟음 (최대 a_dec_mag 제한)
-                double brake_force = (current_v > 0) ? -std::abs(current_v) * 2.0 : std::abs(current_v) * 2.0;
+                double brake_force = (current_v > 0) ? -std::abs(current_v) * 1.0 : std::abs(current_v) * 1.0;
                 
                 // 가속도 한계 클램핑
                 if (brake_force > a_max) brake_force = a_max;
@@ -178,7 +178,7 @@ int main()
             double current_delta = current_x[4];
             if (std::abs(current_delta) > 0.05) {
                 // 핸들이 꺾여있다면 중앙(0)을 향해 조향 각속도 인가
-                double return_speed = (current_delta > 0) ? -0.5 : 0.5; // rad/s (초당 약 30도씩 풀기)
+                double return_speed = (current_delta > 0) ? -0.2 : 0.2; // rad/s (초당 약 10도씩 풀기)
                 current_u[1] = return_speed;
             } else {
                 current_u[1] = 0.0;

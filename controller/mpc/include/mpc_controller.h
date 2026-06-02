@@ -198,41 +198,65 @@ public:
         // 2. 예측 호라이즌 내 추종 궤적(yref_window) 찾기
         // 내부 버퍼를 사용하여 슬라이딩 윈도우 생성
         std::vector<ReferenceTraj> yref_window(N_);
+        bool mode_switched = false;
+        double last_theta = 0.0;
+        double last_delta = 0.0;
 
-        // VehicleMode curr_mode = ref_traj_[current_closest_idx_].mode;
-        int transient_idx = -1;
         for (int i = 0; i < N_; ++i) {
             int idx = std::min(current_closest_idx_ + i, (int)ref_traj_.size() - 1);
-            // 모드 변환지점 찾고, 그 직전 점의 위치와 헤딩으로 남은 윈도우를 모두 채움
-            if (transient_idx == -1 && ref_traj_[idx].mode != curr_mode) {
-                transient_idx = idx - 1;
-                // 현재 인덱스보다 작아지진 않도록 방어
-                if (transient_idx < current_closest_idx_) transient_idx = current_closest_idx_;
+            
+            // 미래 예측 윈도우 내에서 모드가 바뀌는 순간 포착
+            if (!mode_switched && ref_traj_[idx].mode != curr_mode) {
+                mode_switched = true;
+                // 모드 전환 직전(마지막 정상 자전거 상태)의 헤딩과 조향각
+                last_theta = ref_traj_[idx - 1].theta;
+                last_delta = ref_traj_[idx - 1].delta;
             }
-            // 모드전환 지점이 있으면 그 이후 값들은 모두 정지 상태
-            if (transient_idx != -1) {
-                yref_window[i] = ref_traj_[transient_idx];
-                yref_window[i].v = 0.0;
-                yref_window[i].a = 0.0;
+            
+            // 1. 일단 위치(x, y)와 타겟 상태는 원본 궤적을 그대로 복사
+            yref_window[i] = ref_traj_[idx];
+            
+            // 2. 만약 미래 궤적이 다른 모드라면, 기구학적으로 불가능한 요구만 마스킹!
+            if (mode_switched) {
+                // 위치(x,y)는 멈춰있는 타겟 그대로 두되, 
+                // 자전거가 멈춰서 낼 수 없는 미래의 회전/조향 요구를 강제로 지워버립니다.
+                yref_window[i].theta = last_theta; 
+                yref_window[i].delta = last_delta; 
                 yref_window[i].delta_dot = 0.0;
+                
+                // 속도는 0으로 확정
+                yref_window[i].v = 0.0; 
+                yref_window[i].a = 0.0;
             }
-            else
-                yref_window[i] = ref_traj_[idx];
         }
+
+        // // VehicleMode curr_mode = ref_traj_[current_closest_idx_].mode;
+        // int transient_idx = -1;
         // for (int i = 0; i < N_; ++i) {
-        //     int target_idx = std::min(current_closest_idx_ + i, (int)ref_traj_.size() - 1);
-        //     yref_window[i] = ref_traj_[target_idx];
+        //     int idx = std::min(current_closest_idx_ + i, (int)ref_traj_.size() - 1);
+        //     // 모드 변환지점 찾고, 그 직전 점의 위치와 헤딩으로 남은 윈도우를 모두 채움
+        //     if (transient_idx == -1 && ref_traj_[idx].mode != curr_mode) {
+        //         transient_idx = idx - 1;
+        //         // 현재 인덱스보다 작아지진 않도록 방어
+        //         if (transient_idx < current_closest_idx_) transient_idx = current_closest_idx_;
+        //     }
+        //     // 모드전환 지점이 있으면 그 이후 값들은 모두 정지 상태
+        //     if (transient_idx != -1) {
+        //         yref_window[i] = ref_traj_[transient_idx];
+        //         yref_window[i].v = 0.0;
+        //         yref_window[i].a = 0.0;
+        //         yref_window[i].delta_dot = 0.0;
+        //     }
+        //     else
+        //         yref_window[i] = ref_traj_[idx];
         // }
 
         ReferenceTrajTerminal yref_e;
-        // int terminal_idx = std::min(current_closest_idx_ + N_, (int)ref_traj_.size() - 1);
-        // 모드 전환 지점이 있으면 그 지점을 종점으로
-        int terminal_idx = (transient_idx != -1) ? transient_idx : std::min(current_closest_idx_ + N_, (int)ref_traj_.size() - 1);
-        yref_e.x = ref_traj_[terminal_idx].x;
-        yref_e.y = ref_traj_[terminal_idx].y;
-        yref_e.theta = ref_traj_[terminal_idx].theta;
-        yref_e.v = ref_traj_[terminal_idx].v;
-        yref_e.delta = ref_traj_[terminal_idx].delta;
+        yref_e.x = yref_window.back().x;
+        yref_e.y = yref_window.back().y;
+        yref_e.theta = yref_window.back().theta;
+        yref_e.v = yref_window.back().v;
+        yref_e.delta = yref_window.back().delta;
 
         // 솔버에 즉시 타겟 주입
         setTargetTrajectory(yref_window, yref_e);

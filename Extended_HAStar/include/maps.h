@@ -20,7 +20,7 @@ public:
 	//std::vector<std::vector<int>>& getOccMap();
 	//void setOccMap(const std::vector<std::vector<int>>& _map);
 	void generate_multi_homotopy_map(int num_rnd_obs,const int& sc_, const int& sr_, const int& gc_, const int& gr_);
-	void generate_warehouse_map(int num_rnd_obs, const int& sc_, const int& sr_, const int& gc_, const int& gr_);
+	void generate_parking_lot_map(int num_rnd_obs, const int& sc_, const int& sr_, const int& gc_, const int& gr_);
 	GridMap<int>& getOccMap();
 	void setOccMap(const GridMap<int>& _map);
 	void setObstacles(int r, int c);
