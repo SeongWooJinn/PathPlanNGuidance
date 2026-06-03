@@ -17,21 +17,21 @@ def main():
         print("Error: /tmp/mpc_log 파일을 찾을 수 없습니다.")
         return
 
-    # ============================================================
-    # [추가된 부분] 데이터를 CSV 또는 TXT 파일로 저장
-    # ============================================================
-    # 데이터를 Pandas DataFrame으로 변환
-    df = pd.DataFrame(data)
+    # # ============================================================
+    # # [추가된 부분] 데이터를 CSV 또는 TXT 파일로 저장
+    # # ============================================================
+    # # 데이터를 Pandas DataFrame으로 변환
+    # df = pd.DataFrame(data)
     
-    # 1) CSV 형식으로 저장 (콤마(,)로 구분)
-    csv_filename = "mpc_log_data.csv"
-    df.to_csv(csv_filename, index=False)
-    print(f"데이터가 {csv_filename} 파일로 저장되었습니다.")
+    # # 1) CSV 형식으로 저장 (콤마(,)로 구분)
+    # csv_filename = "mpc_log_data.csv"
+    # df.to_csv(csv_filename, index=False)
+    # print(f"데이터가 {csv_filename} 파일로 저장되었습니다.")
 
-    # 2) TXT 형식으로 저장 (탭(\t)으로 구분)
-    txt_filename = "mpc_log_data.txt"
-    df.to_csv(txt_filename, index=False, sep='\t')
-    print(f"데이터가 {txt_filename} 파일로 저장되었습니다.")
+    # # 2) TXT 형식으로 저장 (탭(\t)으로 구분)
+    # txt_filename = "mpc_log_data.txt"
+    # df.to_csv(txt_filename, index=False, sep='\t')
+    # print(f"데이터가 {txt_filename} 파일로 저장되었습니다.")
     # ============================================================
 
     # 시간 축 생성 (가정: dt = 0.033초, 필요시 수정)

@@ -42,8 +42,8 @@ int main() {
     my_robot.delta_max = M_PI * 30.0 / 180.0; // rad
     // my_robot.alpha = 90.0 * M_PI / 180.0;    // actionset범위 조절 가능 
     // my_robot.beta = M_PI;     // 180도 회전 [-PI/2, PI/2]  
-    my_robot.alpha = 20.0 * M_PI / 180.0;    // actionset범위 조절 가능 
-    my_robot.beta = 20.0 * M_PI / 180.0;     // 180도 회전 [-PI/2, PI/2]  
+    my_robot.alpha = 20.0 * M_PI / 180.0;    // max actionset범위 조절 가능 
+    my_robot.beta = 90.0 * M_PI / 180.0;     // max 180도 회전 [-PI/2, PI/2]  
 
     // // ROBOT2 : TURTLEBOT3 WAFFLE
     // double WB = 0.14;
@@ -112,12 +112,12 @@ int main() {
     spin->setWeights(vehicle_w);
 
     // ------------------ Example map setting ------------------
-    // OccMap gt(rows, cols);
+    int cell_size = 10;
     OccMap gt(rows, cols, resolution);
     // gt.generate_example_map_v3(rnd_obs, sx, sy, gx, gy);
     // gt.generate_multi_homotopy_map(rnd_obs, sx, sy, gx, gy);
     gt.generate_parking_lot_map(rnd_obs, sx, sy, gx, gy);
-    visualize_map(gt.getOccMap(), 10, sx, sy, gx, gy, "Occ Map", resolution);
+    visualize_map(gt.getOccMap(), cell_size, sx, sy, gx, gy, "Occ Map", resolution);
 
     // ------------------ Cost map setting ------------------
     GridMap<double> cost_w(rows, cols, resolution);
@@ -145,7 +145,7 @@ int main() {
         //std::vector<std::pair<State, VehicleMode>> g_path;
         std::vector<State> g_path;
         std::vector<std::tuple<double, double, double>> g_path_vis, g_path_smoothing_vis;
-        int cell_size = 10;
+        
         auto start = std::chrono::system_clock::now();
         if (hastar.run(sx, sy, stheta, sgear, smode, gx, gy, gtheta)) {
             auto end = std::chrono::system_clock::now();

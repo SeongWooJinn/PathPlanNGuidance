@@ -5,6 +5,13 @@ project(mpc_controller)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# For Debugging
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Debug)
+endif()
+# 명시적으로 디버그 기호(-g) 컴파일 플래그 강제 적용
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+
 # ROS 2용 빌드 도구 (추후 colcon build를 위해 유지)
 find_package(ament_cmake REQUIRED) 
 find_package(OpenCV REQUIRED)

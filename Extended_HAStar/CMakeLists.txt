@@ -6,6 +6,13 @@ project(extended_hastar)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# For Debugging
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Debug)
+endif()
+# 명시적으로 디버그 기호(-g) 컴파일 플래그 강제 적용
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+
 # 1. 외부 패키지 찾기 (OpenCV, Eigen3, OMPL) 
 find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
