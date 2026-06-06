@@ -26,13 +26,13 @@ public:
     virtual int updateSlidingWindow(const double* curr, VehicleMode& curr_mode, 
         double min_d, double zero_v,
         double bi_dtheta, double spin_dtheta) = 0;
+    virtual void setTargetTrajectory(
+        const std::vector<ReferenceTraj>& yref, 
+        const ReferenceTrajTerminal& yref_e) = 0;
     virtual bool isGuidanceFinished(const double* curr) = 0;
 
     virtual void setInitialGuess(double* x_init, double* u_init) = 0;  // double* x_init처럼 배열(포인터)로, 초기 예상 궤적 세팅
     virtual void setInitialState(double* lbx0, double* ubx0) = 0;   // 현재 로봇의 물리적 상태 제약 세팅
-    virtual void setTargetTrajectory(
-        const std::vector<ReferenceTraj>& yref, 
-        const ReferenceTrajTerminal& yref_e) = 0;
     virtual void getControlInput(double* u_out) = 0;
     virtual void getPredictedState(int step, double* x_pred) = 0;
 

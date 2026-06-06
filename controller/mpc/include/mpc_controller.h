@@ -151,10 +151,22 @@ public:
         int best_idx = current_closest_idx_;
         int search_limit = std::min(current_closest_idx_ + 10, (int)ref_traj_.size());
         for (int i = current_closest_idx_; i < search_limit; ++i) {
-            double dist = calcDistance(curr[0], curr[1], ref_traj_[i].x, ref_traj_[i].y);
-            // double dtheta = std::abs(normalizeAngle(curr[2] - ref_traj_[i].theta));
-            // double ddelta = std::abs(normalizeAngle(curr[4] - ref_traj_[i].delta));
-            // double dist = dist_xy + 0.5 * dtheta + 0.1 * ddelta;
+            
+            double dist;
+            if (curr_mode == VehicleMode::SpinMode) {
+                best_idx = std::min(current_closest_idx_ + 1, search_limit - 1);
+                // // 스핀 모드에서는 각도 차이를 거리로 간주하여 인덱스를 전진
+                // double dtheta = curr[2] - ref_traj_[i].theta;
+                // while (dtheta > M_PI) dtheta -= 2 * M_PI;
+                // while (dtheta < -M_PI) dtheta += 2 * M_PI;
+                // dist = std::abs(dtheta);
+            } else {
+                // 자전거 모드 등에서는 기존처럼 유클리디안 거리 사용
+                double dx = curr[0] - ref_traj_[i].x;
+                double dy = curr[1] - ref_traj_[i].y;
+                dist = std::hypot(dx, dy);
+            }
+
             if (dist < min_dist) {
                 min_dist = dist;
                 best_idx = i;
@@ -208,9 +220,6 @@ public:
             // 미래 예측 윈도우 내에서 모드가 바뀌는 순간 포착
             if (!mode_switched && ref_traj_[idx].mode != curr_mode) {
                 mode_switched = true;
-                // 모드 전환 직전(마지막 정상 자전거 상태)의 헤딩과 조향각
-                last_theta = ref_traj_[idx - 1].theta;
-                last_delta = ref_traj_[idx - 1].delta;
             }
             
             // 1. 일단 위치(x, y)와 타겟 상태는 원본 궤적을 그대로 복사
@@ -218,38 +227,16 @@ public:
             
             // 2. 만약 미래 궤적이 다른 모드라면, 기구학적으로 불가능한 요구만 마스킹!
             if (mode_switched) {
-                // 위치(x,y)는 멈춰있는 타겟 그대로 두되, 
-                // 자전거가 멈춰서 낼 수 없는 미래의 회전/조향 요구를 강제로 지워버립니다.
-                yref_window[i].theta = last_theta; 
-                yref_window[i].delta = last_delta; 
-                yref_window[i].delta_dot = 0.0;
-                
-                // 속도는 0으로 확정
-                yref_window[i].v = 0.0; 
-                yref_window[i].a = 0.0;
+                if (ref_traj_[idx].mode == VehicleMode::SpinMode) {
+                    // v,a는 0으로 확정
+                    yref_window[i].v = 0.0; 
+                    yref_window[i].a = 0.0;
+
+                    // yref_window[i].delta = 0.0;      // in spinmode delta -> 각속도
+                    // yref_window[i].delta_dot = 0.0;     // 각가속도
+                }
             }
         }
-
-        // // VehicleMode curr_mode = ref_traj_[current_closest_idx_].mode;
-        // int transient_idx = -1;
-        // for (int i = 0; i < N_; ++i) {
-        //     int idx = std::min(current_closest_idx_ + i, (int)ref_traj_.size() - 1);
-        //     // 모드 변환지점 찾고, 그 직전 점의 위치와 헤딩으로 남은 윈도우를 모두 채움
-        //     if (transient_idx == -1 && ref_traj_[idx].mode != curr_mode) {
-        //         transient_idx = idx - 1;
-        //         // 현재 인덱스보다 작아지진 않도록 방어
-        //         if (transient_idx < current_closest_idx_) transient_idx = current_closest_idx_;
-        //     }
-        //     // 모드전환 지점이 있으면 그 이후 값들은 모두 정지 상태
-        //     if (transient_idx != -1) {
-        //         yref_window[i] = ref_traj_[transient_idx];
-        //         yref_window[i].v = 0.0;
-        //         yref_window[i].a = 0.0;
-        //         yref_window[i].delta_dot = 0.0;
-        //     }
-        //     else
-        //         yref_window[i] = ref_traj_[idx];
-        // }
 
         ReferenceTrajTerminal yref_e;
         yref_e.x = yref_window.back().x;
@@ -300,7 +287,8 @@ public:
         const std::vector<ReferenceTraj>& yref, 
         const ReferenceTrajTerminal& yref_e) override 
     {
-        for (int i = 0; i < N_; i++) {double target_array[8];
+        for (int i = 0; i < N_; i++) {
+            double target_array[8];
             target_array[0] = yref[i].x;
             target_array[1] = yref[i].y;
             target_array[2] = yref[i].theta;
@@ -312,6 +300,7 @@ public:
             target_array[7] = 0.0;               
             ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, i, "yref", target_array);
             // ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, i, "yref", (double*)&yref[i]);
+            // std::cout << "spin mode 4/6 : "<< target_array[4] << ", " << target_array[6] << std::endl;
         }
         // 종점(Terminal) 타겟도 5칸 배열로 안전하게 패킹
         double target_e_array[5];

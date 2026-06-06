@@ -632,7 +632,7 @@ void bicycle_model_acados_setup_nlp_in(bicycle_model_solver_capsule* capsule, co
     W_0[3+(NY0) * 3] = 1;
     W_0[4+(NY0) * 4] = 1;
     W_0[5+(NY0) * 5] = 0.1;
-    W_0[6+(NY0) * 6] = 0.5;
+    W_0[6+(NY0) * 6] = 0.05;
     W_0[7+(NY0) * 7] = 100;
     ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, 0, "W", W_0);
     free(W_0);
@@ -652,7 +652,7 @@ void bicycle_model_acados_setup_nlp_in(bicycle_model_solver_capsule* capsule, co
     W[3+(NY) * 3] = 1;
     W[4+(NY) * 4] = 1;
     W[5+(NY) * 5] = 0.1;
-    W[6+(NY) * 6] = 0.5;
+    W[6+(NY) * 6] = 0.05;
     W[7+(NY) * 7] = 100;
 
     for (int i = 1; i < N; i++)
@@ -881,7 +881,7 @@ static void bicycle_model_acados_create_set_opts(bicycle_model_solver_capsule* c
     for (int i = 0; i < N; i++)
         ocp_nlp_solver_opts_set_at_stage(nlp_config, nlp_opts, i, "dynamics_jac_reuse", &tmp_bool);
 
-    double levenberg_marquardt = 0;
+    double levenberg_marquardt = 0.0001;
     ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "levenberg_marquardt", &levenberg_marquardt);
 
     /* options QP solver */
@@ -903,7 +903,7 @@ static void bicycle_model_acados_create_set_opts(bicycle_model_solver_capsule* c
     double nlp_solver_tol_min_step_norm = 0;
     ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "tol_min_step_norm", &nlp_solver_tol_min_step_norm);
     // set HPIPM mode: should be done before setting other QP solver options
-    ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "qp_hpipm_mode", "BALANCE");
+    ocp_nlp_solver_opts_set(nlp_config, nlp_opts, "qp_hpipm_mode", "ROBUST");
 
 
 

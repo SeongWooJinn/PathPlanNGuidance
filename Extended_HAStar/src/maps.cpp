@@ -151,7 +151,7 @@ void OccMap::generate_example_map_v3(int num_rnd_obs, const int& sc_, const int&
 	init_map();
 	try
 	{
-		// around
+		// map boundary
 		for (int r = 0; r < rows_; ++r) {
 			setObstacles(r, 0);
 			setObstacles(rows_ - 1, 0);

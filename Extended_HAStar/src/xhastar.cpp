@@ -332,7 +332,6 @@ bool HybridAStar::run(double sx, double sy, double stheta, int sgear, VehicleMod
 }
 // get path
 std::vector<State> HybridAStar::reconstructPath()
-//std::vector<std::pair<State, VehicleMode>> reconstructPath()
 {
     std::vector<State> out;
     //std::vector<std::pair<State, VehicleMode>> out;
@@ -394,16 +393,16 @@ void HybridAStar::setNav2CostMap(const GridMap<double>& dist_obs) {
     Nav2CostMap(dist_obs, occ_map_, cost_map_, analytic_shot_->getSigmaRobotObs(), planner_weights_.nav2_decay_rate, "nav2style_cost_map_ros2");
 }
 double HybridAStar::getTotalDistance(std::vector<State> path) {
-    if (path.size() < 1) return 0.0;
+    if (path.size() < 2) return 0.0;
 
-    double dist_sq = 0.0;
+    double dist = 0.0;
     for (size_t i = 1; i < path.size(); ++i) {
         double dx = path[i - 1].x - path[i].x;
         double dy = path[i - 1].y - path[i].y;
 
-        dist_sq += dx * dx + dy * dy;
+        dist += std::hypotf(dx, dy);
     }
-    return std::sqrt(dist_sq);
+    return dist;
 }
 void HybridAStar::visualize_searched_segs(
     double sx, double sy,

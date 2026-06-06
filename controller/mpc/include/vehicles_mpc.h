@@ -78,7 +78,6 @@ public:
             capsule_ = nullptr;
         }
     }
-
     void printStats() override {
 
         MpcController::printStats();
@@ -218,7 +217,6 @@ public:
             capsule_ = nullptr;
         }
     }
-
     void printStats() override {
 
         MpcController::printStats();

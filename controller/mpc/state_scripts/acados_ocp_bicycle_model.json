@@ -224,7 +224,7 @@
                 0.0,
                 0.0,
                 0.0,
-                0.5,
+                0.05,
                 0.0
             ],
             [
@@ -306,7 +306,7 @@
                 0.0,
                 0.0,
                 0.0,
-                0.5,
+                0.05,
                 0.0
             ],
             [
@@ -479,7 +479,7 @@
         "bicycle_model_cost/bicycle_model_cost_y_e_fun_jac_ut_xt.c",
         "bicycle_model_cost/bicycle_model_cost_y_e_hess.c"
     ],
-    "hash": "430dbc5d2727cc33c5c3f610c3f288db",
+    "hash": "0b8a8321570112765c0358aecb5562f8",
     "model": {
         "con_h_expr": [],
         "con_h_expr_0": [],
@@ -771,9 +771,9 @@
         "globalization_line_search_use_sufficient_descent": 0,
         "globalization_use_SOC": 0,
         "hessian_approx": "GAUSS_NEWTON",
-        "hpipm_mode": "BALANCE",
+        "hpipm_mode": "ROBUST",
         "integrator_type": "ERK",
-        "levenberg_marquardt": 0.0,
+        "levenberg_marquardt": 0.0001,
         "log_dual_step_norm": false,
         "log_primal_step_norm": false,
         "model_external_shared_lib_dir": null,

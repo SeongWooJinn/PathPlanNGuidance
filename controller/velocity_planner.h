@@ -23,6 +23,7 @@ inline void accelerationProfile(
     for(int i = 1; i < path.size(); ++i){
         if (path[i].mode == VehicleMode::SpinMode) {
             path[i].v = 0.0;
+            // path[i].v = (path[i-1].v >= 0.0) ? 1e-4 : -1e-4;
             continue;
         }
         double dx = path[i].x - path[i-1].x;
@@ -54,6 +55,7 @@ inline void decelerationProfile(
     for (int i = path.size() - 2; i >= 0; --i) {
         if (path[i].mode == VehicleMode::SpinMode) {
             path[i].v = 0.0;
+            // path[i].v = (path[i-1].v >= 0.0) ? 1e-4 : -1e-4;
             continue;
         }
         double dx = path[i+1].x - path[i].x;
@@ -92,7 +94,7 @@ inline ReferenceTraj interpolateState(
         new_pt.x = pt1.x;
         new_pt.y = pt1.y;
         new_pt.theta = normalizeAngle(pt1.theta + r * normalizeAngle(pt2.theta - pt1.theta));
-        new_pt.delta = pt2.delta;
+        new_pt.delta = pt1.delta;
         new_pt.v = 0.0;
         return new_pt;
     }
@@ -138,7 +140,7 @@ inline ReferenceTraj hermiteSplineinterpolateState(
         new_pt.x = pt1.x;
         new_pt.y = pt1.y;
         new_pt.theta = normalizeAngle(pt1.theta + r * normalizeAngle(pt2.theta - pt1.theta));
-        new_pt.delta = pt2.delta;
+        new_pt.delta = pt1.delta;
         new_pt.v = 0.0;
         return new_pt;
     }
@@ -150,7 +152,8 @@ inline ReferenceTraj hermiteSplineinterpolateState(
     double dir1 = (pt1.v >= 0.0) ? 1.0 : -1.0;
     double dir2 = (pt2.v >= 0.0) ? 1.0 : -1.0;
     
-    if (dir1 != dir2) {
+    // 두 점이 모두 BicycleMode일 때만 기어 변속 보간을 수행하도록 방어! -> 이게 없으면 spinmode에서 v, delta가 생김
+    if (pt1.mode == VehicleMode::BicycleMode && pt2.mode == VehicleMode::BicycleMode && dir1 != dir2) {
         new_pt.x = (1.0 - r) * pt1.x + r * pt2.x;
         new_pt.y = (1.0 - r) * pt1.y + r * pt2.y;
         new_pt.theta = normalizeAngle(pt1.theta + r * normalizeAngle(pt2.theta - pt1.theta));
@@ -181,17 +184,10 @@ inline ReferenceTraj hermiteSplineinterpolateState(
     double h01_dot = -6.0 * r2 + 6.0 * r;
     double h11_dot =  3.0 * r2 - 2.0 * r;
 
-    double dx_dr = h00_dot * pt1.x + h10_dot * t0_x + h01_dot * pt2.x + h11_dot * t1_x;
-    double dy_dr = h00_dot * pt1.y + h10_dot * t0_y + h01_dot * pt2.y + h11_dot * t1_y;
+    // double dx_dr = h00_dot * pt1.x + h10_dot * t0_x + h01_dot * pt2.x + h11_dot * t1_x;
+    // double dy_dr = h00_dot * pt1.y + h10_dot * t0_y + h01_dot * pt2.y + h11_dot * t1_y;
 
-    // 이동 속도가 거의 0일 때는 이전 헤딩을 그대로 유지 (atan2(0,0) 에러 방지)
-    double speed = std::hypot(dx_dr, dy_dr);
-    if (speed > 1e-3) {
-        double current_dir = ((1.0 - r) * pt1.v + r * pt2.v >= 0.0) ? 1.0 : -1.0;
-        new_pt.theta = std::atan2(current_dir * dy_dr, current_dir * dx_dr);
-    } else {
-        new_pt.theta = normalizeAngle(pt1.theta + r * normalizeAngle(pt2.theta - pt1.theta));
-    }
+    new_pt.theta = normalizeAngle(pt1.theta + r * normalizeAngle(pt2.theta - pt1.theta));
 
     // 이전 모드(Spin)의 조향각이 새 모드(Bicycle)로 오염되는 것을 완벽 차단
     // if(pt1.mode != pt2.mode) {
@@ -220,7 +216,7 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
         double dy = spatial_path[i].y - spatial_path[i-1].y;
         double ds = std::hypot(dx, dy);
 
-        // 🌟 핵심: 물리적 거리가 0인 SpinMode 구간에 '가상 거리' 부여
+        // 핵심: 물리적 거리가 0인 SpinMode 구간에 '가상 거리' 부여
         if (spatial_path[i].mode == VehicleMode::SpinMode) {
             double dtheta = std::abs(normalizeAngle(spatial_path[i].theta - spatial_path[i-1].theta));
             if (dtheta > 0.05) {
@@ -269,34 +265,43 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
 
         // 5. 미분값 추출 (a, delta_dot)
         new_pt.a = (new_pt.v - prev_pt.v) / dt;
-
         // ==========================================================
+        if (new_pt.mode == VehicleMode::SpinMode) {
+            double diff_theta = normalizeAngle(new_pt.theta - prev_pt.theta);
+            new_pt.delta = diff_theta / dt; // 이것이 omega입니다.
+
+            double diff_omega = (new_pt.delta - prev_pt.delta) / dt; 
+            new_pt.delta_dot = diff_omega; // 각가속도
+            // std::cout << new_pt.delta_dot << std::endl;
+        } 
+        // else {
+        //     // 조향각속도: 각도 랩어라운드(Wrap-around)를 고려하여 차이 계산
+        //     double diff_delta = normalizeAngle(new_pt.delta - prev_pt.delta);
+        //     double calc_delta_dot = diff_delta / dt;
+
+        //     // ==========================================================
+        //     // 조향 각속도 한계 클램핑 
+        //     // ==========================================================
+        //     double max_steer_rate = 1.0; // 파이썬 제약(ubu)과 동일하거나 약간 작게 (rad/s)
+            
+        //     if (calc_delta_dot > max_steer_rate) {
+        //         new_pt.delta_dot = max_steer_rate;
+        //         // 목표치로 점프하지 못하고, 최대 속도로 꺾었을 때의 위치까지만 갱신 (지연 효과)
+        //         new_pt.delta = normalizeAngle(prev_pt.delta + max_steer_rate * dt); 
+        //     } 
+        //     else if (calc_delta_dot < -max_steer_rate) {
+        //         new_pt.delta_dot = -max_steer_rate;
+        //         new_pt.delta = normalizeAngle(prev_pt.delta - max_steer_rate * dt);
+        //     } 
+        //     else {
+        //         new_pt.delta_dot = calc_delta_dot;
+        //     }
+        // }
+        // ==========================================================
+
         // 조향각속도: 각도 랩어라운드(Wrap-around)를 고려하여 차이 계산
-        double diff_delta = normalizeAngle(new_pt.delta - prev_pt.delta);
-        double calc_delta_dot = diff_delta / dt;
-
-        // ==========================================================
-        // 🌟 마법의 필터: 조향 각속도 한계 클램핑 (순간이동 차단)
-        // ==========================================================
-        double max_steer_rate = 1.0; // 파이썬 제약(ubu)과 동일하거나 약간 작게 (rad/s)
-        
-        if (calc_delta_dot > max_steer_rate) {
-            new_pt.delta_dot = max_steer_rate;
-            // 목표치로 점프하지 못하고, 최대 속도로 꺾었을 때의 위치까지만 갱신 (지연 효과)
-            new_pt.delta = normalizeAngle(prev_pt.delta + max_steer_rate * dt); 
-        } 
-        else if (calc_delta_dot < -max_steer_rate) {
-            new_pt.delta_dot = -max_steer_rate;
-            new_pt.delta = normalizeAngle(prev_pt.delta - max_steer_rate * dt);
-        } 
-        else {
-            new_pt.delta_dot = calc_delta_dot;
-        }
-        // ==========================================================
-
-        // // 조향각속도: 각도 랩어라운드(Wrap-around)를 고려하여 차이 계산
-        // double diff_delta = new_pt.delta - prev_pt.delta;
-        // new_pt.delta_dot = diff_delta / dt;
+        double diff_delta = new_pt.delta - prev_pt.delta;
+        new_pt.delta_dot = diff_delta / dt;
 
         temporal_path.push_back(new_pt);
     }
@@ -305,6 +310,9 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
     ReferenceTraj last_pt = temporal_path.back(); // 혹은 spatial_path의 마지막 점 복사
     last_pt.v = 0.0;
     last_pt.a = 0.0;
+    // if (last_pt.mode != VehicleMode::SpinMode) {
+    //     last_pt.delta_dot = 0.0;
+    // }
     last_pt.delta_dot = 0.0;
     temporal_path.push_back(last_pt);
 

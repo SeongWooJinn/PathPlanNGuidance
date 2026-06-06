@@ -224,7 +224,7 @@
                 0.0,
                 0.0,
                 0.0,
-                0.5,
+                0.05,
                 0.0
             ],
             [
@@ -306,7 +306,7 @@
                 0.0,
                 0.0,
                 0.0,
-                0.5,
+                0.05,
                 0.0
             ],
             [
@@ -479,7 +479,7 @@
         "spin_model_cost/spin_model_cost_y_e_fun_jac_ut_xt.c",
         "spin_model_cost/spin_model_cost_y_e_hess.c"
     ],
-    "hash": "e1f2c5a91e00b4ed5ae60b8f596ae2b8",
+    "hash": "3979b2883adb6900376f80dbdd928bd8",
     "model": {
         "con_h_expr": [],
         "con_h_expr_0": [],
@@ -771,9 +771,9 @@
         "globalization_line_search_use_sufficient_descent": 0,
         "globalization_use_SOC": 0,
         "hessian_approx": "GAUSS_NEWTON",
-        "hpipm_mode": "BALANCE",
+        "hpipm_mode": "ROBUST",
         "integrator_type": "ERK",
-        "levenberg_marquardt": 0.0,
+        "levenberg_marquardt": 0.0001,
         "log_dual_step_norm": false,
         "log_primal_step_norm": false,
         "model_external_shared_lib_dir": null,

@@ -48,7 +48,8 @@ public:
         int cell_size,
         std::string title);
     GridMap<double> getCostMap() const {return cost_map_;}
-
+    GridMap<double> getNearestObsDist() const {return dist_obs_;}
+    
 private:
     // map and scales
     int rows_, cols_;

@@ -66,6 +66,7 @@ add_executable(run_mpc
     mpc/include/vehicles_mpc.h
     base_controller.h
     velocity_planner.h
+    eval_guidance.h
     ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/src/visualize.cpp    # for visualize
     ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/src/maps.cpp    # for visualize
     ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/include/visualize.h    # for visualize

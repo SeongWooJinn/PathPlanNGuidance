@@ -30,14 +30,6 @@ add_executable(run_xhastar
     src/xhastar.cpp
     src/visualize.cpp
     
-    # 헤더 파일
-    include/astar.h
-    include/costmap.h
-    include/maps.h
-    include/structs.h
-    include/vehicles.h
-    include/visualize.h
-    include/xhastar.h
 )
 # 3. 헤더 파일 경로 설정
 target_include_directories(run_xhastar PRIVATE

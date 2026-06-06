@@ -1,6 +1,7 @@
 
 #include "xhastar.h"
 #include "maps.h"
+#include "eval_xhapath.h"
 
 int main() {
     // x : col index, y : row index, gear 0 : forward / 1 : reverse
@@ -15,7 +16,7 @@ int main() {
     double map_height = 30.0;
     double map_width = 60.0;
     double resolution = 0.4; //1.0;
-    double sx = 5.0; double sy = 2.0; double stheta = 0.5 * M_PI; int sgear = 0.0; VehicleMode smode = VehicleMode::BicycleMode;
+    double sx = 5.0; double sy = 2.0; double stheta = 1.5 * M_PI; int sgear = 0.0; VehicleMode smode = VehicleMode::BicycleMode;
     double gx = 46.0; double gy = 17.0; double gtheta = 0.5 * M_PI;
     // double gx = 24.0; double gy = 25.0; double gtheta = 1.0 * M_PI;
 
@@ -42,8 +43,8 @@ int main() {
     my_robot.delta_max = M_PI * 30.0 / 180.0; // rad
     // my_robot.alpha = 90.0 * M_PI / 180.0;    // actionset범위 조절 가능 
     // my_robot.beta = M_PI;     // 180도 회전 [-PI/2, PI/2]  
-    my_robot.alpha = 20.0 * M_PI / 180.0;    // max actionset범위 조절 가능 
-    my_robot.beta = 90.0 * M_PI / 180.0;     // max 180도 회전 [-PI/2, PI/2]  
+    my_robot.alpha = 20.0 * M_PI / 180.0;    // parallel mode max alpha, actionset범위 조절 가능 
+    my_robot.beta = 20.0 * M_PI / 180.0;     // spin mode max beta, 180도 회전 [-PI/2, PI/2]  
 
     // // ROBOT2 : TURTLEBOT3 WAFFLE
     // double WB = 0.14;
@@ -138,7 +139,7 @@ int main() {
         
         // vehicle mode 등록
         hastar.registVehicleMode(std::move(bicycle));       // non holonimic mode essential!!!
-        // hastar.registVehicleMode(std::move(crab));
+        hastar.registVehicleMode(std::move(crab));
         hastar.registVehicleMode(std::move(spin));
 
         // Global Hybrid AStar Path
@@ -170,6 +171,13 @@ int main() {
             std::cout << p.x << ", " << p.y << ", " << p.theta
             << ", " << p.gear << ", " << p.steering << ", " << p.vehicle << std::endl;
 
+        evaluatePath metrics = evaluatePathMetrics(g_path, hastar.getNearestObsDist());
+        std::cout << "=== Path Evaluation ===\n";
+        std::cout << "Total Length    : " << metrics.total_length << " m\n";
+        std::cout << "Gear Switches   : " << metrics.gear_switch_cnt << " times\n";
+        std::cout << "Total Yaw Change: " << metrics.total_yaw_changes << " rad\n";
+        std::cout << "Min Clearance   : " << metrics.min_clearance << " m\n";
+        
         savePathToBin(g_path, "/tmp/hybrid_astar_path");
         
         // for plot in controller packages

@@ -54,7 +54,8 @@ def generate_mpc(model):
 
     # 가중치 행렬 (W: Weight) - Q, R, W_obs가 합쳐진 대각 행렬
     W = np.diag([10.0, 10.0, 5.0, 1.0, 1.0,  # Q (상태 추종 가중치)
-                 0.1, 0.5,                   # R (제어 부드러움 가중치)
+                 0.1, 0.05,                   # R (제어 부드러움 가중치)
+                #  1.0, 5.0,                   # R (제어 부드러움 가중치)
                  100.0])                     # W_obs (장애물 회피 척력 가중치)
     ocp.cost.W_0 = W
     ocp.cost.W = W
@@ -95,6 +96,8 @@ def generate_mpc(model):
         # 🌟 제자리 회전 모드에서는 물리적으로 선속도 v가 무조건 0이어야 함!
         ocp.constraints.lbx = np.array([ 0.0, -0.35]) 
         ocp.constraints.ubx = np.array([ 0.0,  0.50]) 
+        # ocp.constraints.lbx = np.array([ 0.0, -1.35]) 
+        # ocp.constraints.ubx = np.array([ 0.0,  1.50]) 
         ocp.constraints.idxbx = np.array([3, 4])
 
 
@@ -103,7 +106,10 @@ def generate_mpc(model):
 
     # 솔버 설정 및 코드 생성
     ocp.solver_options.qp_solver = 'PARTIAL_CONDENSING_HPIPM'
+    ocp.solver_options.levenberg_marquardt = 1e-4
     ocp.solver_options.hessian_approx = 'GAUSS_NEWTON'
+    # HPIPM 내부적으로도 대각성분에 아주 작은 값을 더하는 옵션이 있습니다.
+    ocp.solver_options.hpipm_mode = 'ROBUST'
     ocp.solver_options.integrator_type = 'ERK'
     # ocp.solver_options.nlp_solver_type = 'SQP_RTI'    # 실시간 제어에 매우 빠름, RTI option(1회 연산)
     ocp.solver_options.nlp_solver_type = 'SQP'          # Full SQP(반복 연산)
