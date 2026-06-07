@@ -178,6 +178,7 @@ public:
         double ddelta_cur = std::abs(normalizeAngle(curr[4] - ref_traj_[best_idx].delta));
 
         VehicleMode best_mode = ref_traj_[best_idx].mode;
+        // 속도/거리/헤딩오차 도착허용범위 판단
         switch (best_mode)
         {
         case VehicleMode::ParallelMode:     

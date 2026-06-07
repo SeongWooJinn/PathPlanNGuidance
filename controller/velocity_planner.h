@@ -268,40 +268,18 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
         // ==========================================================
         if (new_pt.mode == VehicleMode::SpinMode) {
             double diff_theta = normalizeAngle(new_pt.theta - prev_pt.theta);
-            new_pt.delta = diff_theta / dt; // 이것이 omega입니다.
+            new_pt.delta = diff_theta / dt; // omega
 
             double diff_omega = (new_pt.delta - prev_pt.delta) / dt; 
-            new_pt.delta_dot = diff_omega; // 각가속도
+            new_pt.delta_dot = diff_omega; // omega_dot 각가속도
             // std::cout << new_pt.delta_dot << std::endl;
+            // MPC 역할, [선택] 스핀모드 각속도, 각가속도 클램핑 가능
         } 
-        // else {
-        //     // 조향각속도: 각도 랩어라운드(Wrap-around)를 고려하여 차이 계산
-        //     double diff_delta = normalizeAngle(new_pt.delta - prev_pt.delta);
-        //     double calc_delta_dot = diff_delta / dt;
-
-        //     // ==========================================================
-        //     // 조향 각속도 한계 클램핑 
-        //     // ==========================================================
-        //     double max_steer_rate = 1.0; // 파이썬 제약(ubu)과 동일하거나 약간 작게 (rad/s)
-            
-        //     if (calc_delta_dot > max_steer_rate) {
-        //         new_pt.delta_dot = max_steer_rate;
-        //         // 목표치로 점프하지 못하고, 최대 속도로 꺾었을 때의 위치까지만 갱신 (지연 효과)
-        //         new_pt.delta = normalizeAngle(prev_pt.delta + max_steer_rate * dt); 
-        //     } 
-        //     else if (calc_delta_dot < -max_steer_rate) {
-        //         new_pt.delta_dot = -max_steer_rate;
-        //         new_pt.delta = normalizeAngle(prev_pt.delta - max_steer_rate * dt);
-        //     } 
-        //     else {
-        //         new_pt.delta_dot = calc_delta_dot;
-        //     }
-        // }
-        // ==========================================================
 
         // 조향각속도: 각도 랩어라운드(Wrap-around)를 고려하여 차이 계산
         double diff_delta = new_pt.delta - prev_pt.delta;
         new_pt.delta_dot = diff_delta / dt;
+        // MPC 역할, [선택] 조향각속도 클램핑 가능
 
         temporal_path.push_back(new_pt);
     }
@@ -310,9 +288,6 @@ inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
     ReferenceTraj last_pt = temporal_path.back(); // 혹은 spatial_path의 마지막 점 복사
     last_pt.v = 0.0;
     last_pt.a = 0.0;
-    // if (last_pt.mode != VehicleMode::SpinMode) {
-    //     last_pt.delta_dot = 0.0;
-    // }
     last_pt.delta_dot = 0.0;
     temporal_path.push_back(last_pt);
 

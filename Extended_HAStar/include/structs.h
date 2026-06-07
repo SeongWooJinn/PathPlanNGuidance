@@ -273,11 +273,14 @@ inline bool loadMapInfoFromBin(mapInfo& log_data, const std::string& filename) {
     in.read(reinterpret_cast<char*>(&rows), sizeof(int));
     in.read(reinterpret_cast<char*>(&cols), sizeof(int));
 
-    double px_scale, origin_x, origin_y;
+    // double px_scale, origin_x, origin_y;
     in.read(reinterpret_cast<char*>(&log_data.px_scale), sizeof(double));
     in.read(reinterpret_cast<char*>(&log_data.origin_x), sizeof(double));
     in.read(reinterpret_cast<char*>(&log_data.origin_y), sizeof(double));
-
+    log_data.map.pixel_scale_ = log_data.px_scale;
+    log_data.map.origin_x_ = log_data.origin_x;
+    log_data.map.origin_y_ = log_data.origin_y;
+    
     // [C] Eigen Matrix 메모리 재할당 및 실제 데이터 복원
     if (rows > 0 && cols > 0) {
         // resize()를 호출하여 읽어들일 크기만큼 메모리를 동적 할당합니다.

@@ -26,14 +26,17 @@ int main()
     double a_dec_mag = 3.0;//0.1;    // 최대 감속도 크기 (양수로 입력, 브레이크 성능)
     double a_max = 3.0;        // 최대 가속도 크기
     double dt = 5.0 / 150.0;          // MPC 제어 주기 generate_mpc.py -> Tf / N
-    double min_dist_thres = 10 * v_max * dt;    // 20 * 0.35
-    double zero_velocity_thres = std::max(0.01, dt * a_max); //dt * a_dec_mag;
 
     // 로봇 하드웨어 제원 (실제 차량 스펙에 맞게 수정)
     double wheelbase = 1.0;       // 축간 거리 L (m)
-    double delta_max = 1.5;       // 최대 조향각 (rad), generate_mpc.py
-    double omega_max = 0.5;       // 제자리 최대 회전 각속도 (rad/s), generate_mpc.py
+    double delta_max = 0.5;       // [bicycle] 최대 조향각 (rad), generate_mpc.py
+    double delta_dot_max = 1.5;   // [bicycle] 최대 조향각속도 (rad/s), generate_mpc.py
+    double omega_max = 0.5;       // [spin] 제자리 최대 회전 각속도 (rad/s), generate_mpc.py
+    double omega_dot_max = delta_dot_max; // [spin] 제자리 최대 회전 각가속도 (rad/s2)
 
+    // 도착허용범위 설정
+    double min_dist_thres = 10 * v_max * dt;    // 20 * 0.35
+    double zero_velocity_thres = std::max(0.01, dt * a_max); //dt * a_dec_mag;
     // 동적 각도 임계값 계산 (마진 1.5배 적용, 최소 0.1 rad 보장)
     double spin_dtheta_thres = std::max(0.05, omega_max * dt * 1.5);
     // 자전거 모드는 최대 속도에서 최대 조향을 꺾었을 때 변하는 각도가 기준
@@ -83,117 +86,64 @@ int main()
     bool is_action_applied = false;
     int recovery_cnt = 0;
     int MAX_RECOVERY_CNT = 30;
-    
+    VehicleMode prev_mode = resampled_traj[closest_idx].mode;
+
     // 4. 제어 루프
     while (closest_idx < resampled_traj.size() - 1) {
-
         VehicleMode curr_mode = resampled_traj[closest_idx].mode;
-        static VehicleMode prev_mode = curr_mode; // 정적 변수로 이전 모드 기억
+        prev_mode = curr_mode;
 
         std::cout << "추종 인덱스: " << closest_idx << " | mode: " << curr_mode
                   << " | 현재 상태 X: " << current_x[0] << ", Y: " << current_x[1] 
                   << " , Theta: " << current_x[2] << ", v: " << current_x[3] << ", delta: " << current_x[4] 
                   << " | 제어 입력 a: " << current_u[0] << ", delta_dot: " << current_u[1] << std::endl;
 
-        // if (closest_idx != 0 && curr_mode != resampled_traj[closest_idx - 1].mode) {
-        //     std::cout << "mode change!! : " << resampled_traj[closest_idx - 1].mode
-        //               << " --> " << curr_mode << ", idx : " << closest_idx << std::endl;
-        // }
+        // 람다식으로 즉시 포인터에 할당
+        MpcController& active_mode = [&](VehicleMode mode) -> MpcController& {
+            if (mode == VehicleMode::BicycleMode) return mpc_bi;
+            else if (mode == VehicleMode::ParallelMode) return mpc_parallel;
+            else return mpc_spin;
+        }(curr_mode);
 
         bool solve_success = false;     // MPC SQP최적화 연산 성공 여부
-        if (curr_mode == VehicleMode::BicycleMode)
-        {
-            // 도착여부 판단
-            if (mpc_bi.isGuidanceFinished(current_x)) break;
 
-            // 각 모드별 인덱스 위치 동기화
-            mpc_bi.setClosestIdx(closest_idx);
-            // 현재 상태를 솔버에 제약 조건으로 주입
-            if (prev_mode == VehicleMode::SpinMode) {
-                std::cout << "mode switch : " << prev_mode << " -> " << curr_mode << std::endl;
-                current_x[3] = 0.0; // v reset
-                current_x[4] = 0.0; // omega -> delta reset
-                current_u[0] = 0.0; // a reset
-                current_u[1] = 0.0; // omega_dot -> delta_dot reset
-            }
-            mpc_bi.setInitialState(current_x, current_x);
-            // 현재 위치를 넘겨주면 내부에서 타겟 인덱스 탐색 및 윈도우 주입 자동 처리
-            closest_idx = mpc_bi.updateSlidingWindow(current_x, curr_mode, 
-                    min_dist_thres, zero_velocity_thres,
-                    bi_dtheta_thres, spin_dtheta_thres);
-
-            solve_success = mpc_bi.solve();
-            if (solve_success) {
-                // 다음 스텝의 예측 상태를 현재 위치로 누적
-                mpc_bi.getPredictedState(1, current_x);
-                mpc_bi.getControlInput(current_u);
-            }
-        }
-        else if (curr_mode == VehicleMode::ParallelMode)
-        {
-            // 도착여부 판단
-            if (mpc_parallel.isGuidanceFinished(current_x)) break;
-
-            // 각 모드별 인덱스 위치 동기화
-            mpc_parallel.setClosestIdx(closest_idx);
-            // 현재 상태를 솔버에 제약 조건으로 주입
-            if (prev_mode == VehicleMode::SpinMode) {
-                std::cout << "mode switch : " << prev_mode << " -> " << curr_mode << std::endl;
-                current_x[3] = 0.0; // v reset
-                current_x[4] = 0.0; // omega -> delta reset
-                current_u[0] = 0.0; // a reset
-                current_u[1] = 0.0; // omega_dot -> delta_dot reset
-            }
-            mpc_parallel.setInitialState(current_x, current_x);
-            // 현재 위치를 넘겨주면 내부에서 타겟 인덱스 탐색 및 윈도우 주입 자동 처리
-            closest_idx = mpc_parallel.updateSlidingWindow(current_x, curr_mode, 
-                    min_dist_thres, zero_velocity_thres,
-                    bi_dtheta_thres, spin_dtheta_thres);
-
-            solve_success = mpc_parallel.solve();
-            if (solve_success) {
-                // 다음 스텝의 예측 상태를 현재 위치로 누적
-                mpc_parallel.getPredictedState(1, current_x);
-                mpc_parallel.getControlInput(current_u);
-            }
-        }
-        else    // spin mode
-        {
-            // 도착여부 판단
-            if (mpc_spin.isGuidanceFinished(current_x)) break;
-
-            // 각 모드별 인덱스 위치 동기화
-            mpc_spin.setClosestIdx(closest_idx);
-            // 현재 상태를 솔버에 제약 조건으로 주입
-            if (prev_mode != VehicleMode::SpinMode) {  // Spin이 아닌 모든 모드에서 넘어올 때
-                std::cout << "mode switch : " << prev_mode << " -> " << curr_mode << std::endl;
-                current_x[3] = 0.0;     // v = 0.0
-                current_x[4] = 0.0;     // delta -> omega = 0.0
-                current_u[0] = 0.0;     // a = 0.0
-                current_u[1] = 0.0;     // delta_dot -> omega_dot = 0.0
-            }
-            mpc_spin.setInitialState(current_x, current_x);
-            // 현재 위치를 넘겨주면 내부에서 타겟 인덱스 탐색 및 윈도우 주입 자동 처리
-            closest_idx = mpc_spin.updateSlidingWindow(current_x, curr_mode, 
-                    min_dist_thres, zero_velocity_thres,
-                    bi_dtheta_thres, spin_dtheta_thres);
-            
-            solve_success = mpc_spin.solve();
-            
-            if (solve_success) {
-                // 다음 스텝의 예측 상태를 현재 위치로 누적
-                mpc_spin.getPredictedState(1, current_x);
-                mpc_spin.getControlInput(current_u);
-            }
-        }
-        prev_mode = curr_mode; 
+        // 도착여부 판단
+        if (active_mode.isGuidanceFinished(current_x)) break;
         
+        // 각 모드별 인덱스 위치 동기화
+        active_mode.setClosestIdx(closest_idx);
+        // 현재 상태를 솔버에 제약 조건으로 주입
+        if (prev_mode != curr_mode) {
+            std::cout << "mode switch : " << prev_mode << " -> " << curr_mode << std::endl;
+            // prev가 스핀모드였으면 시스템 변수가 다르므로(omega->delta, omega_dot -> delta_dot) 초기화
+            // curr이 스핀모드면 제자리 회전이므로 v, a = 0 / omega, omega_dot = 0부터 시작하도록 초기화
+            if (prev_mode == VehicleMode::SpinMode || curr_mode == VehicleMode::SpinMode) {
+                current_x[3] = 0.0; // v reset
+                current_x[4] = 0.0; // omega -> delta reset
+                current_u[0] = 0.0; // a reset
+                current_u[1] = 0.0; // omega_dot -> delta_dot reset
+            }
+        }
+        active_mode.setInitialState(current_x, current_x);
+        // 현재 위치를 넘겨주면 내부에서 타겟 인덱스 탐색 및 윈도우 주입 자동 처리
+        closest_idx = active_mode.updateSlidingWindow(current_x, curr_mode, 
+                min_dist_thres, zero_velocity_thres,
+                bi_dtheta_thres, spin_dtheta_thres);
+
+        solve_success = active_mode.solve();
+        if (solve_success) {
+            // 다음 스텝의 예측 상태를 현재 위치로 누적
+            active_mode.getPredictedState(1, current_x);
+            active_mode.getControlInput(current_u);
+        }
+
+        // recovery fsm
         if (!solve_success){
             std::cerr << "[Warning] MPC 최적화 연산 실패! Recovery FSM 가동" << std::endl;
             recovery_cnt++;
-            // A. 부드러운 감속 로직 (Jerk-limited Braking)
+            // A. 부드러운 감속 로직
             double current_v = current_x[3];
-            if (std::abs(current_v) > 0.01) {
+            if (std::abs(current_v) > 0.05) {
                 // 1. 타겟 브레이크 가속도 설정
                 double target_brake = (current_v > 0) ? -a_dec_mag : a_dec_mag;
                 
@@ -210,45 +160,44 @@ int main()
                 }
             } else {
                 // 완전 정지 상태
-                current_u[0] = 0.0;
-                current_x[3] = 0.0;
+                current_u[0] = 0.0;     // a
+                current_x[3] = 0.0;     // v
             }
 
-            // B. 조향각 복원 로직 (Rate-limited Steering Return)
-            // 실패 직전의 조향각을 그대로 굳혀서 곡률을 유지한 채 감속하도록 강제
-            current_u[1] = 0.0; // delta_dot = 0.0 (핸들 회전 정지)
-
-            // double current_delta = current_x[4];
-            // if (std::abs(current_delta) > 0.05) {
-            //     // 1. 핸들을 중앙으로 풀기 위한 타겟 각속도 (초당 약 5.7도)
-            //     double target_steer_rate = (current_delta > 0) ? -0.1 : 0.1;
-                
-            //     // 2. 한 스텝당 변할 수 있는 최대 각속도 폭 제한 (Max Steer Accel: 2.0 rad/s^2 기준)
-            //     double max_delta_u1 = 2.0 * dt;
-
-            //     // 3. 현재 조향 속도(current_u[1])를 타겟을 향해 부드럽게 이동
-            //     if (target_steer_rate > current_u[1] + max_delta_u1) {
-            //         current_u[1] += max_delta_u1;
-            //     } else if (target_steer_rate < current_u[1] - max_delta_u1) {
-            //         current_u[1] -= max_delta_u1;
-            //     } else {
-            //         current_u[1] = target_steer_rate;
-            //     }
-            // } else {
-            //     current_u[1] = 0.0;
-            // }
+            // B. 조향각 유지 or 각속도 감속 로직
+            // 1. Bicycle or Parallel mode
+            if (curr_mode != VehicleMode::SpinMode) {
+                // 실패 직전의 조향각을 그대로 유지한 채 감속하도록 강제
+                current_u[1] = 0.0; // delta_dot = 0.0 (핸들 회전 정지)
+            }
+            // 2. Spin mode
+            else {
+                // current_x[4] -> omega, current_u[1] -> delta omega
+                double omega = current_x[4];
+                if (std::abs(omega) > 0.05) {     // rad/s
+                    double target_omega_dot = (omega >= 0.0) ? -omega_dot_max : omega_dot_max;  // 타겟 각가속도
+                    double max_delta_u1 = 5.0 * dt;         // 각가속도 변화량(jerk)
+                    if (target_omega_dot > current_u[1] + max_delta_u1) {
+                        current_u[1] += max_delta_u1;
+                    }
+                    else if(target_omega_dot < current_u[1] - max_delta_u1) {
+                        current_u[1] -= max_delta_u1;
+                    }
+                    else {
+                        current_u[1] = target_omega_dot; // 타겟 도달 시 고정
+                    }
+                }
+                else {
+                    current_u[1] = 0.0;
+                    current_x[4] = 0.0;
+                }
+            }
             
             // 2. Recovery 상태 머신 (is_action_applied 플래그로 상태 전환 제어)
-            // if (!is_action_applied) {
             if (recovery_cnt == 1) {
                 std::cout << "Recovery Step 1: 솔버 내부 메모리(Warm Start) 강제 초기화" << std::endl;
                 // 이전 스텝의 꼬여버린 예측 해를 현재 위치 기준으로 깨끗하게 덮어씌움
-                if (curr_mode == VehicleMode::BicycleMode) 
-                    mpc_bi.setInitialGuess(current_x, current_u);
-                else if (curr_mode == VehicleMode::ParallelMode) 
-                    mpc_parallel.setInitialGuess(current_x, current_u);
-                else 
-                    mpc_spin.setInitialGuess(current_x, current_u);
+                active_mode.setInitialGuess(current_x, current_u);
             } 
             else if(recovery_cnt > MAX_RECOVERY_CNT) {
                 std::cout << "Recovery Step 2: 초기화로도 실패. 타겟 인덱스 강제 스킵 (Deadlock 탈출)" << std::endl;
@@ -257,10 +206,9 @@ int main()
                 if (resampled_traj[next_idx].mode == curr_mode) {
                     closest_idx = next_idx; // 같은 모드일 때만 인덱스를 건너뜀
                 } else {
-                    std::cout << " -> 다음 궤적이 모드 전환점이므로 인덱스를 고정하고 정지를 대기합니다." << std::endl;
+                    std::cout << " -> 다음 궤적이 모드 전환점이므로 인덱스 고정, 정지 대기" << std::endl;
                 }
                 // // 장애물이나 극단적 곡률로 인해 특정 인덱스에서 막혔다면 억지로 한 칸 넘김
-                // int next_idx = std::min(closest_idx + 1, (int)resampled_traj.size() - 1);
                 recovery_cnt = 0;
             }
 
@@ -273,9 +221,10 @@ int main()
                 std::cout << "[Success] 솔버 자가 복구 완료! 정상 주행 복귀." << std::endl;
                 recovery_cnt = 0; 
             }
-            // is_action_applied = false; 
         }
 
+        prev_mode = curr_mode; 
+        
         // 한 스텝 이동할 때마다 현재 상태를 track_path에 기록
         State current_state;
         current_state.x = current_x[0];

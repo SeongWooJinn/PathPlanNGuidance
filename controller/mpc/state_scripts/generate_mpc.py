@@ -81,8 +81,10 @@ def generate_mpc(model):
     # reference : nav2_params.yaml -> ExtendedHybridAStar
     if (model.name == 'bicycle_model'):
         # 상태 제약: v(인덱스 3), delta(인덱스 4)
-        ocp.constraints.lbx = np.array([-v_limit, -1.5]) 
-        ocp.constraints.ubx = np.array([ v_limit,  1.5])
+        # ocp.constraints.lbx = np.array([-v_limit, -1.5]) 
+        # ocp.constraints.ubx = np.array([ v_limit,  1.5])
+        ocp.constraints.lbx = np.array([-v_limit, -0.7])    # 40 deg, (c++) max보다 크게 설정
+        ocp.constraints.ubx = np.array([ v_limit,  0.7])
         ocp.constraints.idxbx = np.array([3, 4]) 
         
     elif (model.name == 'parallel_model'):
@@ -92,7 +94,7 @@ def generate_mpc(model):
         ocp.constraints.idxbx = np.array([3, 4]) 
         
     elif (model.name == 'spin_model'):
-        # 상태 제약: v(인덱스 3), delta(인덱스 4, spin에서는 omega)
+        # 상태 제약: v(인덱스 3), omega(인덱스 4, spin에서는 각속도)
         # 🌟 제자리 회전 모드에서는 물리적으로 선속도 v가 무조건 0이어야 함!
         ocp.constraints.lbx = np.array([ 0.0, -0.35]) 
         ocp.constraints.ubx = np.array([ 0.0,  0.50]) 
