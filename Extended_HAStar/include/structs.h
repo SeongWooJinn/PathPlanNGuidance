@@ -154,13 +154,13 @@ struct MpcResultLog {
 // For map share to controller packages
 struct mapInfo
 {
-    double cell_size;     // 픽셀 비율 
+    int cell_size;     // 픽셀 비율 
     double r_length;       // 로봇 길이
     double r_width;        // 로봇 폭
     double resolution;     // 맵 해상도
     double sx, sy; 
     double gx, gy;
-    double px_scale, origin_x, origin_y;
+    double origin_x, origin_y;
     GridMap<int> map;
 };
 
@@ -236,10 +236,10 @@ inline void saveMapInfoToBin(const mapInfo& log_data, const std::string& filenam
     out.write(reinterpret_cast<const char*>(&rows), sizeof(int));
     out.write(reinterpret_cast<const char*>(&cols), sizeof(int));
 
-    double px_scale = log_data.map.pixel_scale_;
+    // double px_scale = log_data.map.pixel_scale_;
     double origin_x = log_data.map.origin_x_;
     double origin_y = log_data.map.origin_y_;
-    out.write(reinterpret_cast<const char*>(&px_scale), sizeof(double));
+    // out.write(reinterpret_cast<const char*>(&px_scale), sizeof(double));
     out.write(reinterpret_cast<const char*>(&origin_x), sizeof(double));
     out.write(reinterpret_cast<const char*>(&origin_y), sizeof(double));
 
@@ -274,10 +274,10 @@ inline bool loadMapInfoFromBin(mapInfo& log_data, const std::string& filename) {
     in.read(reinterpret_cast<char*>(&cols), sizeof(int));
 
     // double px_scale, origin_x, origin_y;
-    in.read(reinterpret_cast<char*>(&log_data.px_scale), sizeof(double));
+    // in.read(reinterpret_cast<char*>(&log_data.px_scale), sizeof(double));
     in.read(reinterpret_cast<char*>(&log_data.origin_x), sizeof(double));
     in.read(reinterpret_cast<char*>(&log_data.origin_y), sizeof(double));
-    log_data.map.pixel_scale_ = log_data.px_scale;
+    log_data.map.pixel_scale_ = log_data.resolution;
     log_data.map.origin_x_ = log_data.origin_x;
     log_data.map.origin_y_ = log_data.origin_y;
     

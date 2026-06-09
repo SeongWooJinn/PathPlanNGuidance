@@ -295,7 +295,7 @@ void visualize_tracking_performance(
     GridMap<int>& occ_map,
     int cell_size, double r_length, double r_width,
     std::string title, double resolution,
-	double px_scale, double origin_x, double origin_y)
+	double origin_x, double origin_y)
 {
     int rows = occ_map.data_.rows();
     int cols = occ_map.data_.cols();
@@ -316,16 +316,16 @@ void visualize_tracking_performance(
     // 2. 옅은 색상으로 전역 경로(Reference) 먼저 그리기 (밑바탕)
     for (size_t i = 1; i < global_path.size(); ++i) {
         int p1x = [&](double p) {
-				return static_cast<int>(floor( (p - origin_x) / px_scale));
+				return static_cast<int>(floor( (p - origin_x) / resolution));
 			}(global_path[i - 1].x );
         int p1y = [&](double p) {
-				return static_cast<int>(floor( (p - origin_y) / px_scale));
+				return static_cast<int>(floor( (p - origin_y) / resolution));
 			}(global_path[i - 1].y );
         int p2x = [&](double p) {
-				return static_cast<int>(floor( (p - origin_x) / px_scale));
+				return static_cast<int>(floor( (p - origin_x) / resolution));
 			}(global_path[i].x );
         int p2y = [&](double p) {
-				return static_cast<int>(floor( (p - origin_y) / px_scale));
+				return static_cast<int>(floor( (p - origin_y) / resolution));
 			}(global_path[i].y );
         
         cv::Point p1(p1x * cell_size, p1y * cell_size);
@@ -339,10 +339,10 @@ void visualize_tracking_performance(
 	cv::Scalar mode_color;
     for (size_t i = 1; i < tracked_path.size(); ++i) {
         int p1x = [&](double p) {
-				return static_cast<int>(floor( (p - origin_x) / px_scale));
+				return static_cast<int>(floor( (p - origin_x) / resolution));
 			}(tracked_path[i - 1].x );
         int p1y = [&](double p) {
-				return static_cast<int>(floor( (p - origin_y) / px_scale));
+				return static_cast<int>(floor( (p - origin_y) / resolution));
 			}(tracked_path[i - 1].y );
         double p1t = tracked_path[i - 1].theta;
 		VehicleMode p1mode = tracked_path[i-1].vehicle;
@@ -378,10 +378,10 @@ void visualize_tracking_performance(
     }
 	// goal point triangle
 	int gx = [&](double p) {
-			return static_cast<int>(floor( (p - origin_x) / px_scale));
+			return static_cast<int>(floor( (p - origin_x) / resolution));
 		}(tracked_path[tracked_path.size() - 1].x);
 	int gy = [&](double p) {
-			return static_cast<int>(floor( (p - origin_y) / px_scale));
+			return static_cast<int>(floor( (p - origin_y) / resolution));
 		}(tracked_path[tracked_path.size() - 1].y);
 	drawVehicle(img,
 		gx * cell_size,
