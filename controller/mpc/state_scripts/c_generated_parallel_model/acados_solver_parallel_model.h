@@ -64,7 +64,7 @@
 #define PARALLEL_MODEL_NY0    8
 #define PARALLEL_MODEL_NY     8
 #define PARALLEL_MODEL_NYN    5
-#define PARALLEL_MODEL_N      150
+#define PARALLEL_MODEL_N      60
 #define PARALLEL_MODEL_NH     0
 #define PARALLEL_MODEL_NHN    0
 #define PARALLEL_MODEL_NH0    0

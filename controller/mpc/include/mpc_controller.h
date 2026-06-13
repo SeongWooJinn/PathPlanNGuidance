@@ -31,6 +31,9 @@ protected:
     std::vector<ReferenceTraj> ref_traj_;
     int current_closest_idx_ = 0;
 
+    // for eval
+    RealTimePerformance rt_stats;
+
 //////// helper functions ////////
     inline double calcDistance(double x1, double y1, double x2, double y2) const 
     {
@@ -38,11 +41,16 @@ protected:
     }
 
 public:
-    virtual ~MpcController() = default;
-    std::vector<ReferenceTraj> getRefTrajectoryData() {return ref_traj_;}
-    void setRefTrajectoryData(const std::vector<ReferenceTraj>& traj) { ref_traj_ = traj;}
-    void setClosestIdx(int idx) {current_closest_idx_ = idx;}
-    
+    // virtual ~MpcController() = default;
+    virtual ~MpcController() {
+        if (rt_stats.cnt_ > 0) {
+            rt_stats.prinsMetrics();
+        }
+    }
+    inline std::vector<ReferenceTraj> getRefTrajectoryData() {return ref_traj_;}
+    inline void setRefTrajectoryData(const std::vector<ReferenceTraj>& traj) { ref_traj_ = traj;}
+    inline void setClosestIdx(int idx) {current_closest_idx_ = idx;}
+
 ///////////// 공통 로직 (BaseController의 가상 함수 구현) /////////////
     bool getRefTraj(
         std::vector<State>& global_path, double v_max,
@@ -334,11 +342,15 @@ public:
         ocp_nlp_get(nlp_solver_, "sqp_iter", &sqp_iter_);
 
         // printf("\nSolver info:\n");
-        printf(" SQP iterations %2d\n solve %f [ms]\n KKT %e\n",
-            sqp_iter_, time_tot_*1000, kkt_norm_inf_);
+        // printf(" SQP iterations %2d\n solve %f [ms]\n KKT %e\n",
+        //     sqp_iter_, time_tot_*1000, kkt_norm_inf_);
 
     }
 ////////////// 자식 classes에서 반드시 구현해야 할 함수 /////////////
+
+    // void mpcPerformance() {
+    //     rt_stats.prinsMetrics();
+    // }
 
 };
 

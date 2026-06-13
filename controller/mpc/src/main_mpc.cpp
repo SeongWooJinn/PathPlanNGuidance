@@ -26,7 +26,7 @@ int main()
     double a_lat_max = 0.2;    // 최대 횡가속도(구심 가속도) 한계 (커브길 감속용)
     double a_dec_mag = 3.0;//0.1;    // 최대 감속도 크기 (양수로 입력, 브레이크 성능)
     double a_max = 3.0;        // 최대 가속도 크기
-    double dt = 5.0 / 150.0;          // MPC 제어 주기 generate_mpc.py -> Tf / N
+    double dt = 2.0 / 60.0;          // MPC 제어 주기 generate_mpc.py -> Tf / N
 
     // 로봇 하드웨어 제원 (실제 차량 스펙에 맞게 수정)
     double wheelbase = 1.0;       // 축간 거리 L (m)
@@ -138,7 +138,7 @@ int main()
             // 다음 스텝의 예측 상태를 현재 위치로 누적
             active_mode.getPredictedState(1, current_x);
             active_mode.getControlInput(current_u);
-            
+
             active_mode.printStatus();
         }
         
@@ -197,6 +197,7 @@ int main()
     std::cout << "Control Effort (Smooth) : " << metrics.total_control_effort << "\n";
     std::cout << "=============================================\n";
 
+    
     ///////////////////////////////////////////////
     //////////////////// 시각화 ////////////////////
     ///////////////////////////////////////////////

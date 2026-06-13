@@ -14,8 +14,10 @@ def generate_mpc(model):
     ocp.code_export_directory = f'c_generated_{model.name}'
 
     # 예측 호라이즌 설정 (예: 1초 앞을 0.05초 간격으로 20번 쪼개서 예측)
-    N = 150 #50
-    Tf = 5.0 #5.0
+    # N = 150 #50
+    # Tf = 5.0 #5.0
+    N = 60 #50
+    Tf = 2.0 #5.0
     # ocp.dims.N = N
     ocp.solver_options.N_horizon = N
     ocp.solver_options.tf = Tf
@@ -113,9 +115,9 @@ def generate_mpc(model):
     # HPIPM 내부적으로도 대각성분에 아주 작은 값을 더하는 옵션이 있습니다.
     ocp.solver_options.hpipm_mode = 'ROBUST'
     ocp.solver_options.integrator_type = 'ERK'
-    # ocp.solver_options.nlp_solver_type = 'SQP_RTI'    # 실시간 제어에 매우 빠름, RTI option(1회 연산)
-    ocp.solver_options.nlp_solver_type = 'SQP'          # Full SQP(반복 연산)
-    ocp.solver_options.nlp_solver_max_iter = 100         # Full SQP일때 솔버가 최대 n번까지 반복해서 정답을 찾도록 허용
+    ocp.solver_options.nlp_solver_type = 'SQP_RTI'    # 실시간 제어에 매우 빠름, RTI option(1회 연산)
+    # ocp.solver_options.nlp_solver_type = 'SQP'          # Full SQP(반복 연산)
+    # ocp.solver_options.nlp_solver_max_iter = 100         # Full SQP일때 솔버가 최대 n번까지 반복해서 정답을 찾도록 허용
     
     AcadosOcpSolver(ocp, json_file=f'acados_ocp_{model.name}.json')
     print("성공적으로 C 코드가 생성되었습니다!")

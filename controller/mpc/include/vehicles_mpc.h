@@ -64,9 +64,11 @@ public:
         ocp_nlp_get(nlp_solver_, "time_qp", &time_qp_);
         ocp_nlp_get(nlp_solver_, "time_lin", &time_lin_);
 
-        std::cout << "Bicycle " << "  - Total: " << time_tot_ * 1000.0 << " ms"
-                  << " (QP: " << time_qp_ * 1000.0 << " ms,"
-                  << " Lin: " << time_lin_ * 1000.0 << " ms)" << std::endl;
+        // std::cout << "Bicycle " << "  - Total: " << time_tot_ * 1000.0 << " ms"
+        //           << " (QP: " << time_qp_ * 1000.0 << " ms,"
+        //           << " Lin: " << time_lin_ * 1000.0 << " ms)" << std::endl;
+
+        rt_stats.update(time_tot_, time_qp_, time_lin_);
 
         return (status_ == 0);
     }
@@ -141,10 +143,11 @@ public:
         ocp_nlp_get(nlp_solver_, "time_qp", &time_qp_);
         ocp_nlp_get(nlp_solver_, "time_lin", &time_lin_);
         
-        std::cout << "Parallel " << "  - Total: " << time_tot_ * 1000.0 << " ms"
-                  << " (QP: " << time_qp_ * 1000.0 << " ms,"
-                  << " Lin: " << time_lin_ * 1000.0 << " ms)" << std::endl;
+        // std::cout << "Parallel " << "  - Total: " << time_tot_ * 1000.0 << " ms"
+        //           << " (QP: " << time_qp_ * 1000.0 << " ms,"
+        //           << " Lin: " << time_lin_ * 1000.0 << " ms)" << std::endl;
 
+        rt_stats.update(time_tot_, time_qp_, time_lin_);
         return (status_ == 0);
     }
 
@@ -217,9 +220,11 @@ public:
         ocp_nlp_get(nlp_solver_, "time_qp", &time_qp_);
         ocp_nlp_get(nlp_solver_, "time_lin", &time_lin_);
 
-        std::cout << "Spin " << "  - Total: " << time_tot_ * 1000.0 << " ms"
-                  << " (QP: " << time_qp_ * 1000.0 << " ms,"
-                  << " Lin: " << time_lin_ * 1000.0 << " ms)" << std::endl;
+        // std::cout << "Spin " << "  - Total: " << time_tot_ * 1000.0 << " ms"
+        //           << " (QP: " << time_qp_ * 1000.0 << " ms,"
+        //           << " Lin: " << time_lin_ * 1000.0 << " ms)" << std::endl;
+
+        rt_stats.update(time_tot_, time_qp_, time_lin_);
 
         return (status_ == 0);
     }
