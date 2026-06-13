@@ -95,10 +95,10 @@ int main()
         VehicleMode curr_mode = resampled_traj[closest_idx].mode;
         prev_mode = curr_mode;
 
-        std::cout << "추종 인덱스: " << closest_idx << " | mode: " << curr_mode
-                  << " | 현재 상태 X: " << current_x[0] << ", Y: " << current_x[1] 
-                  << " , Theta: " << current_x[2] << ", v: " << current_x[3] << ", delta: " << current_x[4] 
-                  << " | 제어 입력 a: " << current_u[0] << ", delta_dot: " << current_u[1] << std::endl;
+        // std::cout << "추종 인덱스: " << closest_idx << " | mode: " << curr_mode
+        //           << " | 현재 상태 X: " << current_x[0] << ", Y: " << current_x[1] 
+        //           << " , Theta: " << current_x[2] << ", v: " << current_x[3] << ", delta: " << current_x[4] 
+        //           << " | 제어 입력 a: " << current_u[0] << ", delta_dot: " << current_u[1] << std::endl;
 
         // 람다식으로 즉시 포인터에 할당
         MpcController& active_mode = [&](VehicleMode mode) -> MpcController& {
@@ -138,6 +138,8 @@ int main()
             // 다음 스텝의 예측 상태를 현재 위치로 누적
             active_mode.getPredictedState(1, current_x);
             active_mode.getControlInput(current_u);
+            
+            active_mode.printStatus();
         }
         
         // 5) 최적화 계산 실패시 절차대로 회복기동

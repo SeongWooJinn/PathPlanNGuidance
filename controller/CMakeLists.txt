@@ -37,6 +37,8 @@ include_directories(
     ############ Extended_HAStar Folder ############
     # for structs
     ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/include
+    # for maps
+    ${CMAKE_CURRENT_SOURCE_DIR}/../maps/include
 )
 
 # 3. acados 기본 라이브러리 폴더 경로 지정
@@ -61,16 +63,8 @@ set_target_properties(acados_spin_lib PROPERTIES
 # 5. 실행 파일(main standalone exe) 생성
 add_executable(run_mpc
     mpc/src/main_mpc.cpp   
-    mpc/include/mpc_controller.h
-    mpc/include/structs_mpc.h
-    mpc/include/vehicles_mpc.h
-    base_controller.h
-    velocity_planner.h
-    eval_guidance.h
     ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/src/visualize.cpp    # for visualize
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/src/maps.cpp    # for visualize
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/include/visualize.h    # for visualize
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/include/maps.h    # for visualize
+    ${CMAKE_CURRENT_SOURCE_DIR}/../maps/src/maps.cpp    # for visualize
 )
 
 # 6. 필수 라이브러리 풀세트 링크 (acados 코어 + 수학 엔진 + 모델 라이브러리)

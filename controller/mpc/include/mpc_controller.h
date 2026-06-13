@@ -24,7 +24,7 @@ protected:
     // for stats 
     // double min_time_ = 1e12;
     double kkt_norm_inf_;
-    double elapsed_time_;
+    double time_tot_, time_qp_, time_lin_;
     int sqp_iter_;
 
     // for ref trajectory, velocity propile
@@ -327,15 +327,15 @@ public:
 
 ////////////// 자식 classes에서 반드시 구현해야 할 함수 /////////////
     virtual void freeSolver() = 0;
-    virtual void printStats() {
+    virtual void printStatus() {
 
         // get solution
         ocp_nlp_out_get(nlp_config_, nlp_dims_, nlp_out_, 0, "kkt_norm_inf", &kkt_norm_inf_);
         ocp_nlp_get(nlp_solver_, "sqp_iter", &sqp_iter_);
 
-        printf("\nSolver info:\n");
+        // printf("\nSolver info:\n");
         printf(" SQP iterations %2d\n solve %f [ms]\n KKT %e\n",
-            sqp_iter_, elapsed_time_*1000, kkt_norm_inf_);
+            sqp_iter_, time_tot_*1000, kkt_norm_inf_);
 
     }
 ////////////// 자식 classes에서 반드시 구현해야 할 함수 /////////////

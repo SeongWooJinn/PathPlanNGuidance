@@ -60,7 +60,14 @@ public:
     bool solve() override {
         status_ = bicycle_model_acados_solve(capsule_);
 
-        ocp_nlp_get(nlp_solver_, "time_tot", &elapsed_time_);
+        ocp_nlp_get(nlp_solver_, "time_tot", &time_tot_);
+        ocp_nlp_get(nlp_solver_, "time_qp", &time_qp_);
+        ocp_nlp_get(nlp_solver_, "time_lin", &time_lin_);
+
+        std::cout << "Bicycle " << "  - Total: " << time_tot_ * 1000.0 << " ms"
+                  << " (QP: " << time_qp_ * 1000.0 << " ms,"
+                  << " Lin: " << time_lin_ * 1000.0 << " ms)" << std::endl;
+
         return (status_ == 0);
     }
 
@@ -78,9 +85,9 @@ public:
             capsule_ = nullptr;
         }
     }
-    void printStats() override {
+    void printStatus() override {
 
-        MpcController::printStats();
+        MpcController::printStatus();
         bicycle_model_acados_print_stats(capsule_);
 
     }
@@ -130,7 +137,14 @@ public:
     bool solve() override {
         status_ = parallel_model_acados_solve(capsule_);
 
-        ocp_nlp_get(nlp_solver_, "time_tot", &elapsed_time_);
+        ocp_nlp_get(nlp_solver_, "time_tot", &time_tot_);
+        ocp_nlp_get(nlp_solver_, "time_qp", &time_qp_);
+        ocp_nlp_get(nlp_solver_, "time_lin", &time_lin_);
+        
+        std::cout << "Parallel " << "  - Total: " << time_tot_ * 1000.0 << " ms"
+                  << " (QP: " << time_qp_ * 1000.0 << " ms,"
+                  << " Lin: " << time_lin_ * 1000.0 << " ms)" << std::endl;
+
         return (status_ == 0);
     }
 
@@ -149,9 +163,9 @@ public:
         }
     }
 
-    void printStats() override {
+    void printStatus() override {
 
-        MpcController::printStats();
+        MpcController::printStatus();
         parallel_model_acados_print_stats(capsule_);
 
     }
@@ -199,7 +213,14 @@ public:
     bool solve() override {
         status_ = spin_model_acados_solve(capsule_);
 
-        ocp_nlp_get(nlp_solver_, "time_tot", &elapsed_time_);
+        ocp_nlp_get(nlp_solver_, "time_tot", &time_tot_);
+        ocp_nlp_get(nlp_solver_, "time_qp", &time_qp_);
+        ocp_nlp_get(nlp_solver_, "time_lin", &time_lin_);
+
+        std::cout << "Spin " << "  - Total: " << time_tot_ * 1000.0 << " ms"
+                  << " (QP: " << time_qp_ * 1000.0 << " ms,"
+                  << " Lin: " << time_lin_ * 1000.0 << " ms)" << std::endl;
+
         return (status_ == 0);
     }
 
@@ -217,9 +238,9 @@ public:
             capsule_ = nullptr;
         }
     }
-    void printStats() override {
+    void printStatus() override {
 
-        MpcController::printStats();
+        MpcController::printStatus();
         spin_model_acados_print_stats(capsule_);
 
     }
