@@ -62,7 +62,7 @@ struct RealTimePerformance
         return (variance > 0.0) ? std::sqrt(variance) : 0.0;
     }
 
-    void prinsMetrics() {
+    void printMetrics() {
 
         double mean_tot = getMean(sum_time_tot_);
         double mean_qp = getMean(sum_time_qp_);

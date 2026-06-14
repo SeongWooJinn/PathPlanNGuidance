@@ -398,8 +398,12 @@ void spin_model_acados_create_set_default_parameters(spin_model_solver_capsule* 
     const int N = capsule->nlp_solver_plan->N;
     // initialize parameters to nominal value
     double* p = calloc(NP, sizeof(double));
-    p[0] = 10000;
-    p[1] = 10000;
+    p[0] = -10000;
+    p[1] = -10000;
+    p[2] = -10000;
+    p[3] = -10000;
+    p[4] = -10000;
+    p[5] = -10000;
 
     for (int i = 0; i <= N; i++) {
         spin_model_acados_update_params(capsule, i, p, NP);
@@ -1018,7 +1022,7 @@ int spin_model_acados_update_params(spin_model_solver_capsule* capsule, int stag
 {
     int solver_status = 0;
 
-    int casadi_np = 2;
+    int casadi_np = 6;
     if (casadi_np != np) {
         printf("acados_update_params: trying to set %i parameters for external functions."
             " External function has %i parameters. Exiting.\n", np, casadi_np);

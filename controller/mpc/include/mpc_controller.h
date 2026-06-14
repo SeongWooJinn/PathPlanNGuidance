@@ -44,7 +44,7 @@ public:
     // virtual ~MpcController() = default;
     virtual ~MpcController() {
         if (rt_stats.cnt_ > 0) {
-            rt_stats.prinsMetrics();
+            rt_stats.printMetrics();
         }
     }
     inline std::vector<ReferenceTraj> getRefTrajectoryData() {return ref_traj_;}
@@ -347,10 +347,6 @@ public:
 
     }
 ////////////// 자식 classes에서 반드시 구현해야 할 함수 /////////////
-
-    // void mpcPerformance() {
-    //     rt_stats.prinsMetrics();
-    // }
 
 };
 

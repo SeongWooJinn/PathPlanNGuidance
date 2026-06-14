@@ -183,8 +183,12 @@ int parallel_model_acados_sim_create(parallel_model_sim_solver_capsule * capsule
     /* initialize parameter values */
     double* p = calloc(np, sizeof(double));
     
-    p[0] = 10000;
-    p[1] = 10000;
+    p[0] = -10000;
+    p[1] = -10000;
+    p[2] = -10000;
+    p[3] = -10000;
+    p[4] = -10000;
+    p[5] = -10000;
 
     parallel_model_acados_sim_update_params(capsule, p, np);
     free(p);

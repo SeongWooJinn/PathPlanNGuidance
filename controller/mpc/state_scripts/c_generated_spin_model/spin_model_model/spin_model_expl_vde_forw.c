@@ -34,6 +34,7 @@ extern "C" {
 #define casadi_s1 CASADI_PREFIX(s1)
 #define casadi_s2 CASADI_PREFIX(s2)
 #define casadi_s3 CASADI_PREFIX(s3)
+#define casadi_s4 CASADI_PREFIX(s4)
 
 /* Symbol visibility in DLLs */
 #ifndef CASADI_SYMBOL_EXPORT
@@ -54,8 +55,9 @@ static const casadi_int casadi_s0[3] = {5, 1, 1};
 static const casadi_int casadi_s1[3] = {5, 5, 1};
 static const casadi_int casadi_s2[3] = {5, 2, 1};
 static const casadi_int casadi_s3[3] = {2, 1, 1};
+static const casadi_int casadi_s4[3] = {6, 1, 1};
 
-/* spin_model_expl_vde_forw:(i0[5],i1[5x5],i2[5x2],i3[2],i4[2])->(o0[5],o1[5x5],o2[5x2]) */
+/* spin_model_expl_vde_forw:(i0[5],i1[5x5],i2[5x2],i3[2],i4[6])->(o0[5],o1[5x5],o2[5x2]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
   casadi_real a0, a1;
   a0=0.;
@@ -176,7 +178,7 @@ CASADI_SYMBOL_EXPORT const casadi_int* spin_model_expl_vde_forw_sparsity_in(casa
     case 1: return casadi_s1;
     case 2: return casadi_s2;
     case 3: return casadi_s3;
-    case 4: return casadi_s3;
+    case 4: return casadi_s4;
     default: return 0;
   }
 }

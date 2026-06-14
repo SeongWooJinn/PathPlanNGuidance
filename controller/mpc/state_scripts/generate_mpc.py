@@ -26,10 +26,11 @@ def generate_mpc(model):
     # 파라미터 (Parameters): 실시간으로 변하는 외부 입력값
     # ===============================================
     # x_obs, y_obs (가장 가까운 장애물의 좌표)
-    p = ca.SX.sym('p', 2) 
-    ocp.model.p = p # 모델에 파라미터 등록
-    # ocp.parameter_values = np.array([0.0, 0.0]) # initialize 
-    ocp.parameter_values = np.array([10000.0, 10000.0]) # initialize 유령 장애물
+    num_obs = 3                 # real time num obs
+    p = ca.SX.sym('p', 2 * num_obs) 
+    ocp.model.p = p             # 모델에 파라미터 등록
+    # [x1, y1, x2, y2, x3, y3] 유령 장애물
+    ocp.parameter_values = np.array([-10000.0, -10000.0] * num_obs) 
 
     # ===============================================
     # 목적 함수 (Cost Function) 세팅 (NONLINEAR_LS 방식)
@@ -40,14 +41,41 @@ def generate_mpc(model):
 
     nx = model.x.shape[0]
     nu = model.u.shape[0]
-    ny = nx + nu + 1 # x(5) + u(2) + 장애물항(1) = 8 차원
-    ny_e = nx # 종점은 제어입력과 장애물항 생략 가능
+    ny = nx + nu + 1            # x(5) + u(2) + 장애물항(1) = 8 차원
+    ny_e = nx                   # 종점은 제어입력과 장애물항 생략 가능
+
+    # 민코프스키 하이퍼 타원 파라미터 세팅
+    # 차량의 절반 길이/폭 + 안전 마진
+    a_radius = 0.8  # 차량 전후 방향 반경
+    b_radius = 0.5  # 차량 좌우 방향 반경
+    epsilon = 1e-4
+    
+    obs_penalty = 0.0
+    for i in range(num_obs):
+        x_obs = p[2*i]
+        y_obs = p[2*i + 1]
+
+        # dx, dy
+        dx = model.x[0] - x_obs
+        dy = model.x[1] - y_obs
+        theta = model.x[2]
+
+        # global frame -> robot frame
+        dx_rot = dx * ca.cos(theta) + dy * ca.sin(theta)
+        dy_rot = -dx * ca.sin(theta) + dy * ca.cos(theta)
+
+        # 4차 하이퍼 타원 (Minkowski Ellipse) 방정식
+        # E <= 1 이면 로봇 영역 내부 침범을 의미
+        E = (dx_rot / a_radius)**4 + (dy_rot / b_radius)**4
+        
+        # 타원에 가까워질수록 페널티가 기하급수적으로 증가
+        obs_penalty += 1.0 / (E + epsilon)
 
     # 잔차(Residual) 공식 작성: 이것들의 제곱합이 최소화됨
-    x_obs = p[0]
-    y_obs = p[1]
-    epsilon = 1e-6
-    obs_penalty = 1.0 / ca.sqrt((model.x[0] - x_obs)**2 + (model.x[1] - y_obs)**2 + epsilon)
+    # x_obs = p[0]
+    # y_obs = p[1]
+    # epsilon = 1e-6
+    # obs_penalty = 1.0 / ca.sqrt((model.x[0] - x_obs)**2 + (model.x[1] - y_obs)**2 + epsilon)
 
     # y = [x, y, theta, v, delta, a, delta_dot, obs_penalty]
     ocp.model.cost_y_expr_0 = ca.vertcat(model.x, model.u, obs_penalty)
@@ -132,37 +160,3 @@ if __name__ == '__main__':
     generate_mpc(export_bicycle_model())
     generate_mpc(export_parallel_model())
     generate_mpc(export_spin_model())
-
-
-# ############ 목표 궤적 예제 코드 ############
-
-    # // # generate_mpc.py
-    # // # 참조 궤적 초기화 (나중에 C++에서 덮어씀)
-    # // ocp.cost.yref_0 = np.zeros(ny)
-    # // ocp.cost.yref = np.zeros(ny)
-    # // ocp.cost.yref_e = np.zeros(ny_e)
-
-    # // solve ocp in loop
-    # for (int ii = 0; ii < NTIMINGS; ii++)
-    # {
-    #     // 1. 8차원 목표 궤적 배열 (1m 앞 직진)
-    #     double yref[8] = {1.0, 2.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-
-    #     // initialize solution
-    #     for (int i = 0; i < N; i++)
-    #     {
-    #         ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "x", x_init);
-    #         ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, i, "u", u0);
-    #         // 목표 궤적 주입!
-    #         ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, i, "yref", yref);
-    #     }
-        
-    #     // 3. 종점(Terminal) 목표 궤적 주입 (5차원: x, y, theta, v, delta)
-    #     double yref_e[5] = {1.0, 0.0, 0.0, 0.0, 0.0}; 
-    #     ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, N, "yref", yref_e);
-
-    #     ocp_nlp_out_set(nlp_config, nlp_dims, nlp_out, nlp_in, N, "x", x_init);
-    #     status = parallel_model_acados_solve(acados_ocp_capsule);
-    #     ocp_nlp_get(nlp_solver, "time_tot", &elapsed_time);
-    #     min_time = MIN(elapsed_time, min_time);
-    # }
