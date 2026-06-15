@@ -17,7 +17,6 @@ find_package(ament_cmake REQUIRED)
 find_package(OpenCV REQUIRED)
 
 ############### START : Make main standalone exe file ###############
-
 # 1. acados 설치 경로 수동 지정 (사용자 환경에 맞게 수정 필수!)
 set(ACADOS_DIR "/home/uj/acados")
 
@@ -33,12 +32,6 @@ include_directories(
     mpc/state_scripts/c_generated_bicycle_model
     mpc/state_scripts/c_generated_parallel_model
     mpc/state_scripts/c_generated_spin_model
-
-    ############ Extended_HAStar Folder ############
-    # for structs
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/include
-    # for maps
-    ${CMAKE_CURRENT_SOURCE_DIR}/../maps/include
 )
 
 # 3. acados 기본 라이브러리 폴더 경로 지정
@@ -59,12 +52,29 @@ add_library(acados_spin_lib SHARED IMPORTED)
 set_target_properties(acados_spin_lib PROPERTIES 
     IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/mpc/state_scripts/c_generated_spin_model/libacados_solver_spin_model.so
 )
+# 4-1) add maps_lib
+add_library(maps_lib 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../maps/src/maps.cpp
+)
+target_include_directories(maps_lib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/../maps/include    # maps의 include 폴더 지정
+    ${CMAKE_CURRENT_SOURCE_DIR}/../commons/include            # for struct.h
+    ${EIGEN3_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
+)
+# 4-2) add commons_lib
+add_library(common_planner_lib 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../commons/src/visualize.cpp
+)
+target_include_directories(common_planner_lib PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/../commons/include    # maps의 include 폴더 지정
+    ${EIGEN3_INCLUDE_DIRS}
+    ${OpenCV_INCLUDE_DIRS}
+)
 
 # 5. 실행 파일(main standalone exe) 생성
 add_executable(run_mpc
     mpc/src/main_mpc.cpp   
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Extended_HAStar/src/visualize.cpp    # for visualize
-    ${CMAKE_CURRENT_SOURCE_DIR}/../maps/src/maps.cpp    # for visualize
 )
 
 # 6. 필수 라이브러리 풀세트 링크 (acados 코어 + 수학 엔진 + 모델 라이브러리)
@@ -76,6 +86,8 @@ target_link_libraries(run_mpc
     acados_bicycle_lib
     acados_parallel_lib
     acados_spin_lib
+    maps_lib
+    common_planner_lib
     ${OpenCV_LIBS}
 )
 

@@ -330,8 +330,25 @@ public:
     void getPredictedState(int step, double* x_pred) override {
         ocp_nlp_out_get(nlp_config_, nlp_dims_, nlp_out_, step, "x", x_pred);
     }
-///////////// 공통 로직 (BaseController의 가상 함수 구현) /////////////
 
+    void setObstacleParameters(const std::vector<Obstacle>& top_obs, int k) override
+    {
+        // k -> 파이썬에서 정의
+        double p_data[k * 2];
+        
+        for (int i = 0; i < k; ++i) {
+            p_data[i*2]     = top_obs[i].x;
+            p_data[i*2 + 1] = top_obs[i].y;
+        }
+
+        // 호라이즌(N)의 모든 스텝에 대해 동일한 장애물 파라미터 적용
+        // (만약 동적 장애물의 속도를 고려해 미래 위치를 예측한다면, 
+        //  for문 내부에서 i * dt * vx 만큼 더해서 주입할 수도 있습니다!)
+        for (int i = 0; i <= N_; i++) {
+            ocp_nlp_in_set(nlp_config_, nlp_dims_, nlp_in_, i, "parameter_values", p_data);
+        }
+    }
+///////////// 공통 로직 (BaseController의 가상 함수 구현) /////////////
 
 ////////////// 자식 classes에서 반드시 구현해야 할 함수 /////////////
     virtual void freeSolver() = 0;

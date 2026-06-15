@@ -2,6 +2,7 @@
 #include "xhastar.h"
 #include "maps.h"
 #include "eval_xhapath.h"
+#include "file_handler.h"
 
 int main() {
     // x : col index, y : row index, gear 0 : forward / 1 : reverse

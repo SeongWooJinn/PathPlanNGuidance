@@ -7,6 +7,7 @@
 #include <cmath>
 #include <algorithm>
 #include "mpc/include/structs_mpc.h"
+#include "obstacles_manager.h"
 
 const double GOAL_TOLERANCE = 0.01;
 
@@ -35,6 +36,7 @@ public:
     virtual void setInitialState(double* lbx0, double* ubx0) = 0;   // 현재 로봇의 물리적 상태 제약 세팅
     virtual void getControlInput(double* u_out) = 0;
     virtual void getPredictedState(int step, double* x_pred) = 0;
+    virtual void setObstacleParameters(const std::vector<Obstacle>& top_obs, int k) = 0;
 
 protected:
     // 각도를 -M_PI ~ M_PI (-180도 ~ 180도) 사이로 정규화하는 헬퍼 함수

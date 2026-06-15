@@ -3,6 +3,7 @@
 #include "maps.h"
 #include "eval_guidance.h"
 #include "recoveryfsm_mpc.h"
+#include "file_handler.h"
 
 int main()
 {
@@ -90,6 +91,7 @@ int main()
     recoveryFSM fsm(MAX_RECOVERY_CNT, dt, a_dec_mag, omega_dot_max);
     
     VehicleMode prev_mode = resampled_traj[closest_idx].mode;
+
     // 4. 제어 루프
     while (closest_idx < resampled_traj.size() - 1) {
         VehicleMode curr_mode = resampled_traj[closest_idx].mode;

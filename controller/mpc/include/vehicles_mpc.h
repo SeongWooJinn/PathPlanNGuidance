@@ -90,7 +90,7 @@ public:
     void printStatus() override {
 
         MpcController::printStatus();
-        bicycle_model_acados_print_stats(capsule_);
+        // bicycle_model_acados_print_stats(capsule_);
 
     }
 };
@@ -169,7 +169,7 @@ public:
     void printStatus() override {
 
         MpcController::printStatus();
-        parallel_model_acados_print_stats(capsule_);
+        // parallel_model_acados_print_stats(capsule_);
 
     }
 };
@@ -246,7 +246,7 @@ public:
     void printStatus() override {
 
         MpcController::printStatus();
-        spin_model_acados_print_stats(capsule_);
+        // spin_model_acados_print_stats(capsule_);
 
     }
 };
