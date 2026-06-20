@@ -7,6 +7,19 @@
 
 int main()
 {
+    // 0. 필요한 전역맵, 전역경로, 로봇 정보 가져오기
+    mapInfo mapinfo;
+    if (!loadMapInfoFromBin(mapinfo, "/tmp/mapinfo")) {
+        std::cout << "Map load 실패" << std::endl;
+        return -1;
+    }
+    RobotConfigs robotconfig;
+    if (!loadRobotConfigFromBin(robotconfig, "/tmp/robotconfig")) {
+        std::cout << "robotconfig load 실패" << std::endl;
+        return -1;
+    }
+    std::vector<State> g_path = loadPathFromBin("/tmp/hybrid_astar_path");
+
     // 1. 컨트롤러 초기화
     // 초기화 등 acados 내부 오류 발생 시 수동으로 make : cd ~/c_generated_xx -> make shared_lib
     BicycleMode mpc_bi;
@@ -16,9 +29,6 @@ int main()
     if (!mpc_bi.initialize()) return -1;
     if (!mpc_parallel.initialize()) return -1;
     if (!mpc_spin.initialize()) return -1;
-    
-    // 2. 경로 로드 (파일 로드 및 내부 포맷 변환 자동 수행)
-    std::vector<State> g_path = loadPathFromBin("/tmp/hybrid_astar_path");
 
     // 제어 파라미터 세팅 (실제 차량 사양에 맞게 튜닝)
     // nav2_params.yaml controller server
@@ -30,8 +40,8 @@ int main()
     double dt = 2.0 / 60.0;          // MPC 제어 주기 generate_mpc.py -> Tf / N
 
     // 로봇 하드웨어 제원 (실제 차량 스펙에 맞게 수정)
-    double wheelbase = 1.0;       // 축간 거리 L (m)
-    double delta_max = 0.5;       // [bicycle] 최대 조향각 (rad), generate_mpc.py
+    double wheelbase = robotconfig.WB;       // 축간 거리 L (m)
+    double delta_max = robotconfig.delta_max;       // [bicycle] 최대 조향각 (rad), generate_mpc.py
     double delta_dot_max = 1.5;   // [bicycle] 최대 조향각속도 (rad/s), generate_mpc.py
     double omega_max = 0.5;       // [spin] 제자리 최대 회전 각속도 (rad/s), generate_mpc.py
     // bicycle의 u[1]=delta_dot, spin의 u[1]=omega_dot
@@ -60,15 +70,6 @@ int main()
 
     std::cout << "1. reference trajecotory load" << std::endl;
 
-    // for (int i = 0; i < resampled_traj.size(); ++i)
-    //     std::cout << "i : "<< i << ", " 
-    //               << "mode : " << resampled_traj[i].mode << ", " 
-    //               << "v : " << resampled_traj[i].v << ", " 
-    //               << "theta : " << resampled_traj[i].theta << ", "  
-    //               << "a : " << resampled_traj[i].a << ", " 
-    //               << "delta : " << resampled_traj[i].delta << ", " 
-    //               << "delta_dot : " << resampled_traj[i].delta_dot << std::endl;
-
     // 3. 로봇 초기 위치 (테스트용, g_path의 시작점)
     double current_x[5] = {
         g_path[0].x, 
@@ -78,6 +79,10 @@ int main()
         g_path[0].steering // 초기 조향각
     };
     double current_u[2] = {0.0, 0.0};
+
+    // 3.1 [동적 장애물 초기화] 주차장 시나리오 모사
+    std::vector<Obstacle> dynamic_obs;
+    initDynamicObsInParkingLot(mapinfo, dynamic_obs);
 
     std::vector<State> track_path;
     std::vector<std::pair<double, double>> controls;
@@ -113,7 +118,16 @@ int main()
 
         // 0) 도착여부 판단
         if (active_mode.isGuidanceFinished(current_x)) break;
-        
+        // 현재 루프의 dt만큼 장애물 위치 이동
+        updateObstacles(dynamic_obs, dt);
+        // 10m 이내에서 가장 위협적인 장애물 3개 추출 (파이썬 세팅 기준)
+        std::vector<Obstacle> top_k_obs = getTopKObstacles(current_x, dynamic_obs, 3);
+        // 솔버의 파라미터에 유효 장애물 3개의 좌표 주입
+        active_mode.setObstacleParameters(top_k_obs, 3, dt);
+        // for (const auto& obs : top_k_obs) {
+        //     if (obs.x > 0 && obs.y > 0)
+        //         std::cout << "obs point : " << obs.x << ", " << obs.y << std::endl;
+        // }
         // 1) 각 모드별 인덱스 위치 동기화
         active_mode.setClosestIdx(closest_idx);
         // 2) 현재 상태를 솔버에 제약 조건으로 주입
@@ -156,6 +170,8 @@ int main()
         }
         prev_mode = curr_mode; 
         
+        // realtime_view를 위해 현재 위치와 장애물 저장
+        saveCurrentDataToBin(current_x, dynamic_obs, "/tmp/sim_dynamic");
         // 한 스텝 이동할 때마다 현재 상태를 track_path에 기록
         State current_state;
         current_state.x = current_x[0];
@@ -203,12 +219,6 @@ int main()
     ///////////////////////////////////////////////
     //////////////////// 시각화 ////////////////////
     ///////////////////////////////////////////////
-    mapInfo mapinfo;
-    if (!loadMapInfoFromBin(mapinfo, "/tmp/mapinfo")) {
-        std::cout << "Map load 실패" << std::endl;
-        return -1;
-    }
-
     int cell_size   = mapinfo.cell_size;     // 픽셀 비율 
     double r_length = mapinfo.r_length;       // 로봇 길이
     double r_width  = mapinfo.r_width;        // 로봇 폭

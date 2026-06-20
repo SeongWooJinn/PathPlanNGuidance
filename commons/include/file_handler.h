@@ -3,6 +3,7 @@
 
 #include "structs.h"
 
+
 ///////////////////////////////////////////////////
 ///////// .bin save/load helper funcions //////////
 ///////////////////////////////////////////////////
@@ -55,10 +56,10 @@ inline void saveMapInfoToBin(const mapInfo& log_data, const std::string& filenam
     out.write(reinterpret_cast<const char*>(&log_data.r_length), sizeof(double));
     out.write(reinterpret_cast<const char*>(&log_data.r_width), sizeof(double));
     out.write(reinterpret_cast<const char*>(&log_data.resolution), sizeof(double));
-    out.write(reinterpret_cast<const char*>(&log_data.sx), sizeof(int));
-    out.write(reinterpret_cast<const char*>(&log_data.sy), sizeof(int));
-    out.write(reinterpret_cast<const char*>(&log_data.gx), sizeof(int));
-    out.write(reinterpret_cast<const char*>(&log_data.gy), sizeof(int));
+    out.write(reinterpret_cast<const char*>(&log_data.sx), sizeof(double));
+    out.write(reinterpret_cast<const char*>(&log_data.sy), sizeof(double));
+    out.write(reinterpret_cast<const char*>(&log_data.gx), sizeof(double));
+    out.write(reinterpret_cast<const char*>(&log_data.gy), sizeof(double));
 
     int rows = log_data.map.rows();
     int cols = log_data.map.cols();
@@ -93,10 +94,10 @@ inline bool loadMapInfoFromBin(mapInfo& log_data, const std::string& filename) {
     in.read(reinterpret_cast<char*>(&log_data.r_length), sizeof(double));
     in.read(reinterpret_cast<char*>(&log_data.r_width), sizeof(double));
     in.read(reinterpret_cast<char*>(&log_data.resolution), sizeof(double));
-    in.read(reinterpret_cast<char*>(&log_data.sx), sizeof(int));
-    in.read(reinterpret_cast<char*>(&log_data.sy), sizeof(int));
-    in.read(reinterpret_cast<char*>(&log_data.gx), sizeof(int));
-    in.read(reinterpret_cast<char*>(&log_data.gy), sizeof(int));
+    in.read(reinterpret_cast<char*>(&log_data.sx), sizeof(double));
+    in.read(reinterpret_cast<char*>(&log_data.sy), sizeof(double));
+    in.read(reinterpret_cast<char*>(&log_data.gx), sizeof(double));
+    in.read(reinterpret_cast<char*>(&log_data.gy), sizeof(double));
 
     int rows, cols;
     in.read(reinterpret_cast<char*>(&rows), sizeof(int));
@@ -137,6 +138,39 @@ inline void saveMpcResultToBin(const std::vector<MpcResultLog>& log_data, const 
     out.write(reinterpret_cast<const char*>(log_data.data()), log_data.size() * sizeof(MpcResultLog));
     out.close();
     std::cout << "MPC 결과가 " << filename << " 에 바이너리로 저장되었습니다." << std::endl;
+}
+
+inline void saveRobotConfigToBin(const RobotConfigs& log_data, const std::string& filename) {
+    // ios::binary 플래그를 사용하여 바이너리 쓰기 모드로 파일 열기
+    std::ofstream out(filename, std::ios::binary);
+    if (!out) {
+        std::cerr << "Robot config 파일 저장 실패: " << filename << std::endl;
+        return;
+    }
+    
+    out.write(reinterpret_cast<const char*>(&log_data.WB), sizeof(double));
+    out.write(reinterpret_cast<const char*>(&log_data.delta_max), sizeof(double));
+    out.write(reinterpret_cast<const char*>(&log_data.beta), sizeof(double));
+
+    out.close();
+    std::cout << "Robot config가 " << filename << " 에 바이너리로 저장되었습니다." << std::endl;
+}
+
+inline bool loadRobotConfigFromBin(RobotConfigs& log_data, const std::string& filename) {
+    std::ifstream in(filename, std::ios::binary);
+    if (!in) {
+        std::cerr << "Robot config 결과 파일 열기 실패: " << filename << std::endl;
+        return false;
+    }
+
+    // 파일에서 구조체 크기만큼 읽어서 log_data 메모리에 덮어쓰기
+    in.read(reinterpret_cast<char*>(&log_data.WB), sizeof(double));
+    in.read(reinterpret_cast<char*>(&log_data.delta_max), sizeof(double));
+    in.read(reinterpret_cast<char*>(&log_data.beta), sizeof(double));
+
+    in.close();
+    std::cout << "Robot config 결과 파일 열기 성공: " << filename << std::endl;
+    return true;
 }
 
 #endif

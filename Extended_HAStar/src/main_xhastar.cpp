@@ -194,6 +194,7 @@ int main() {
         mapinfo.map = gt_map;
 
         saveMapInfoToBin(mapinfo, "/tmp/mapinfo");
+        saveRobotConfigToBin(my_robot, "/tmp/robotconfig");
     }
     // std::vector<State> load_path = loadPathFromBin("/tmp/hybrid_astar_path");
     // std::cout << "load path successfully" << std::endl;
