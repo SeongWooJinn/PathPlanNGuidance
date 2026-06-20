@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from matplotlib.patches import Circle 
 import struct
 import time
 import os
@@ -117,7 +118,16 @@ robot_scat, = ax.plot([], [], 'bo', markersize=10, label='Robot')
 # scale=1, scale_units='xy'로 설정하면 화살표 길이가 데이터의 물리적 단위(Meter)와 일치합니다.
 heading_arrow = ax.quiver(0, 0, 0, 0, color='red', scale=1.0, scale_units='xy', angles='xy', width=0.008, label='Heading')
 
-obs_scat = ax.scatter([], [], c='orange', s=200, alpha=0.8, edgecolors='red', label='Dyn Obstacles')
+# obs_scat = ax.scatter([], [], c='orange', s=200, alpha=0.8, edgecolors='red', label='Dyn Obstacles')
+# 🌟 수정: scatter 삭제하고, 물리 단위(m)로 그려지는 Circle 리스트 생성
+MAX_OBS = 10 # 넉넉하게 10개 준비
+obs_circles = []
+for _ in range(MAX_OBS):
+    # 초기 위치 (0,0), 반경 0으로 안 보이게 세팅
+    circle = Circle((0, 0), 0.0, facecolor='orange', edgecolor='red', alpha=0.6)
+    ax.add_patch(circle)
+    obs_circles.append(circle)
+
 ax.legend(loc='upper right')
 
 # ==========================================================
@@ -160,7 +170,7 @@ def update(frame):
     num_obs = struct.unpack_from('i', data, 24)[0]
     
     # 3) 동적 장애물 데이터 읽기
-    ox, oy = [], []
+    ox, oy, oradius = [], [], []
     offset = 28
     
     # 안전 장치: 실제 들어온 데이터가 예상 크기보다 크거나 같을 때만 파싱
@@ -170,6 +180,7 @@ def update(frame):
             if obs_x > -5000: # 유령 장애물 무시
                 ox.append(obs_x)
                 oy.append(obs_y)
+                oradius.append(obs_r)
             offset += 24
             
     # 4) 화면 갱신
@@ -178,13 +189,19 @@ def update(frame):
     heading_arrow.set_offsets(np.c_[rx, ry])
     heading_arrow.set_UVC(np.cos(rtheta) * 2.0, np.sin(rtheta) * 2.0)
     # heading_arrow.set_data([rx, rx + np.cos(rtheta)*2], [ry, ry + np.sin(rtheta)*2])
-    
-    if len(ox) > 0:
-        obs_scat.set_offsets(np.c_[ox, oy])
-    else:
-        obs_scat.set_offsets(np.empty((0, 2)))
 
-    return trajectory_line, robot_scat, heading_arrow, obs_scat
+    # 🌟 수정: 실제 반경(obs_r)을 사용하여 Circle 업데이트
+    for i, circle in enumerate(obs_circles):
+        if i < len(ox):
+            # 장애물이 존재하면 중심점과 반경을 업데이트하고 표시
+            circle.center = (ox[i], oy[i])
+            circle.radius = oradius[i]
+            circle.set_visible(True)
+        else:
+            # 남는 Circle은 숨김
+            circle.set_visible(False)
+
+    return trajectory_line, robot_scat, heading_arrow, *obs_circles
 
 # 애니메이션 실행 (약 30fps)
 ani = animation.FuncAnimation(fig, update, interval=33, blit=True, cache_frame_data=False)
