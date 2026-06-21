@@ -45,7 +45,7 @@ int main() {
     // my_robot.beta = M_PI;     // 180도 회전 [-PI/2, PI/2]  
     my_robot.alpha = 20.0 * M_PI / 180.0;    // parallel mode max alpha, actionset범위 조절 가능 
     my_robot.beta = 20.0 * M_PI / 180.0;     // spin mode max beta, 180도 회전 [-PI/2, PI/2]  
-    my_robot.nsteer = 7;
+    my_robot.nsteer = 5;
 
     // // ROBOT2 : TURTLEBOT3 WAFFLE
     // double WB = 0.14;

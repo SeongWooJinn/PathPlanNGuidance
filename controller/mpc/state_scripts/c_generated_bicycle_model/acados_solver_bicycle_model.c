@@ -544,13 +544,13 @@ void bicycle_model_acados_setup_nlp_in(bicycle_model_solver_capsule* capsule, co
 
    double* W_0 = calloc(NY0*NY0, sizeof(double));
     // change only the non-zero elements:
-    W_0[0+(NY0) * 0] = 10;
-    W_0[1+(NY0) * 1] = 10;
-    W_0[2+(NY0) * 2] = 7;
+    W_0[0+(NY0) * 0] = 12;
+    W_0[1+(NY0) * 1] = 12;
+    W_0[2+(NY0) * 2] = 8;
     W_0[3+(NY0) * 3] = 1;
     W_0[4+(NY0) * 4] = 2;
-    W_0[5+(NY0) * 5] = 1;
-    W_0[6+(NY0) * 6] = 1;
+    W_0[5+(NY0) * 5] = 0.3;
+    W_0[6+(NY0) * 6] = 0.3;
     W_0[7+(NY0) * 7] = 2000;
     ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, 0, "W", W_0);
     free(W_0);
@@ -564,13 +564,13 @@ void bicycle_model_acados_setup_nlp_in(bicycle_model_solver_capsule* capsule, co
     free(yref);
     double* W = calloc(NY*NY, sizeof(double));
     // change only the non-zero elements:
-    W[0+(NY) * 0] = 10;
-    W[1+(NY) * 1] = 10;
-    W[2+(NY) * 2] = 7;
+    W[0+(NY) * 0] = 12;
+    W[1+(NY) * 1] = 12;
+    W[2+(NY) * 2] = 8;
     W[3+(NY) * 3] = 1;
     W[4+(NY) * 4] = 2;
-    W[5+(NY) * 5] = 1;
-    W[6+(NY) * 6] = 1;
+    W[5+(NY) * 5] = 0.3;
+    W[6+(NY) * 6] = 0.3;
     W[7+(NY) * 7] = 2000;
 
     for (int i = 1; i < N; i++)

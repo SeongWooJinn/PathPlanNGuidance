@@ -89,7 +89,7 @@ def generate_mpc(model):
     # W = np.diag([10.0, 10.0, 5.0, 1.0, 1.0,  # Q (상태 추종 가중치) x, y, theta, v, delta
     W = np.diag([12.0, 12.0, 8.0, 1.0, 2.0,  # Q (상태 추종 가중치) x, y, theta, v, delta
                 #  0.1, 0.05,                   # R (제어 부드러움 가중치) a, delta_dot
-                 1.0, 1.0,                   # R (제어 부드러움 가중치, 클수록 부드러움) a, delta_dot
+                 0.3, 0.3,                   # R (제어 부드러움 가중치, 클수록 부드러움) a, delta_dot
                  2000.0])                     # W_obs (장애물 회피 척력 가중치)
     ocp.cost.W_0 = W
     ocp.cost.W = W
