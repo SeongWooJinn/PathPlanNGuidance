@@ -8,7 +8,6 @@ int main() {
     // x : col index, y : row index, gear 0 : forward / 1 : reverse
     
     // ------------------ Initial Setting ------------------
-    bool isreplanned = false;
     //int rows = 30, cols = 60;
     //double sx = 5.0; double sy = 25.0; double stheta = 0.5 * M_PI; int sgear = 0.0; VehicleMode smode = VehicleMode::BicycleMode;
     //double gx = 40.0; double gy = 3.0; double gtheta = 0.0 * M_PI;
@@ -42,10 +41,11 @@ int main() {
     my_robot.ref_vel = 0.5;
     my_robot.sensor_fov = 2.0 * M_PI / 3.0;
     my_robot.delta_max = 30.0 * M_PI / 180.0; // rad
-    // my_robot.alpha = 90.0 * M_PI / 180.0;    // actionset범위 조절 가능 
+    // my_robot.alpha = 75.0 * M_PI / 180.0;    // spin mode 안쓸때, nsteer도 크게필
     // my_robot.beta = M_PI;     // 180도 회전 [-PI/2, PI/2]  
     my_robot.alpha = 20.0 * M_PI / 180.0;    // parallel mode max alpha, actionset범위 조절 가능 
     my_robot.beta = 20.0 * M_PI / 180.0;     // spin mode max beta, 180도 회전 [-PI/2, PI/2]  
+    my_robot.nsteer = 7;
 
     // // ROBOT2 : TURTLEBOT3 WAFFLE
     // double WB = 0.14;
@@ -93,7 +93,7 @@ int main() {
     auto bicycle = std::make_unique<BicycleMode>();
     bicycle->setModeType(VehicleMode::BicycleMode);
     bicycle->setVehicleProperties(my_robot.WB, my_robot.delta_max, my_robot.robot_length, my_robot.robot_width,
-                                  my_robot.switch_time, my_robot.ref_vel, my_robot.sensor_fov);
+                                  my_robot.switch_time, my_robot.ref_vel, my_robot.sensor_fov, my_robot.nsteer);
     bicycle->setMapResolution(resolution);
     bicycle->setWeights(vehicle_w);
 
@@ -101,7 +101,7 @@ int main() {
     auto crab = std::make_unique<ParallelMode>();
     crab->setModeType(VehicleMode::ParallelMode);
     crab->setVehicleProperties(my_robot.WB, my_robot.alpha, my_robot.robot_length, my_robot.robot_width, 
-                               my_robot.switch_time, my_robot.ref_vel, my_robot.sensor_fov);
+                               my_robot.switch_time, my_robot.ref_vel, my_robot.sensor_fov, my_robot.nsteer);
     crab->setMapResolution(resolution);
     crab->setWeights(vehicle_w);
 
@@ -109,7 +109,7 @@ int main() {
     auto spin = std::make_unique<SpinMode>();
     spin->setModeType(VehicleMode::SpinMode);
     spin->setVehicleProperties(my_robot.WB, my_robot.beta, my_robot.robot_length, my_robot.robot_width, 
-                               my_robot.switch_time, my_robot.ref_vel, my_robot.sensor_fov);
+                               my_robot.switch_time, my_robot.ref_vel, my_robot.sensor_fov, my_robot.nsteer);
     spin->setMapResolution(resolution);
     spin->setWeights(vehicle_w);
 
@@ -134,68 +134,66 @@ int main() {
     }
 
     // ------------------ Run ------------------
-    if (!isreplanned) {
-        HybridAStar hastar(gt_map, cost_w);
-        hastar.setWeights(planner_w);
-        
-        // vehicle mode 등록
-        hastar.registVehicleMode(std::move(bicycle));       // non holonimic mode essential!!!
-        hastar.registVehicleMode(std::move(crab));
-        hastar.registVehicleMode(std::move(spin));
+    HybridAStar hastar(gt_map, cost_w);
+    hastar.setWeights(planner_w);
+    
+    // vehicle mode 등록
+    hastar.registVehicleMode(std::move(bicycle));       // non holonimic mode essential!!!
+    hastar.registVehicleMode(std::move(crab));
+    hastar.registVehicleMode(std::move(spin));
 
-        // Global Hybrid AStar Path
-        //std::vector<std::pair<State, VehicleMode>> g_path;
-        std::vector<State> g_path;
-        std::vector<std::tuple<double, double, double>> g_path_vis, g_path_smoothing_vis;
-        
-        auto start = std::chrono::system_clock::now();
-        if (hastar.run(sx, sy, stheta, sgear, smode, gx, gy, gtheta)) {
-            auto end = std::chrono::system_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
-            std::cout << "Time for Path Search : " << elapsed.count() << " sec" << std::endl;
-            g_path = hastar.reconstructPath();
-            std::cout << "Total Distance : " << hastar.getTotalDistance(g_path) << std::endl;
-            visualize_hybridastar_path(
-                g_path, 
-                gt_map, 
-                cell_size, 
-                my_robot.robot_length, 
-                my_robot.robot_width, 
-                "Global Hybrid A* path in GT map", 
-                resolution);
-            // hastar.visualize_searched_segs(sx, sy, gx, gy, 10, "State Expansions");
-        }
-
-        std::cout << "Global path of Hybrid A* (No Smoothing)\n";
-        std::cout << "x, y, theta, gear, steer, vehicle mode\n";
-        for (const auto& p : g_path)
-            std::cout << p.x << ", " << p.y << ", " << p.theta
-            << ", " << p.gear << ", " << p.steering << ", " << p.vehicle << std::endl;
-
-        evaluatePath metrics = evaluatePathMetrics(g_path, hastar.getNearestObsDist());
-        std::cout << "=== Path Evaluation ===\n";
-        std::cout << "Total Length    : " << metrics.total_length << " m\n";
-        std::cout << "Gear Switches   : " << metrics.gear_switch_cnt << " times\n";
-        std::cout << "Total Yaw Change: " << metrics.total_yaw_changes << " rad\n";
-        std::cout << "Min Clearance   : " << metrics.min_clearance << " m\n";
-        
-        savePathToBin(g_path, "/tmp/hybrid_astar_path");
-        
-        // for plot in controller packages
-        mapInfo mapinfo;
-        mapinfo.cell_size = cell_size;
-        mapinfo.resolution = resolution;
-        mapinfo.r_length = my_robot.robot_length;
-        mapinfo.r_width = my_robot.robot_width;
-        mapinfo.sx = sx;
-        mapinfo.sy = sy;
-        mapinfo.gx = gx;
-        mapinfo.gy = gy;
-        mapinfo.map = gt_map;
-
-        saveMapInfoToBin(mapinfo, "/tmp/mapinfo");
-        saveRobotConfigToBin(my_robot, "/tmp/robotconfig");
+    // Global Hybrid AStar Path
+    //std::vector<std::pair<State, VehicleMode>> g_path;
+    std::vector<State> g_path;
+    std::vector<std::tuple<double, double, double>> g_path_vis, g_path_smoothing_vis;
+    
+    auto start = std::chrono::system_clock::now();
+    if (hastar.run(sx, sy, stheta, sgear, smode, gx, gy, gtheta)) {
+        auto end = std::chrono::system_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(end - start);
+        std::cout << "Time for Path Search : " << elapsed.count() << " sec" << std::endl;
+        g_path = hastar.reconstructPath();
+        std::cout << "Total Distance : " << hastar.getTotalDistance(g_path) << std::endl;
+        visualize_hybridastar_path(
+            g_path, 
+            gt_map, 
+            cell_size, 
+            my_robot.robot_length, 
+            my_robot.robot_width, 
+            "Global Hybrid A* path in GT map", 
+            resolution);
+        // hastar.visualize_searched_segs(sx, sy, gx, gy, 10, "State Expansions");
     }
+
+    std::cout << "Global path of Hybrid A* (No Smoothing)\n";
+    std::cout << "x, y, theta, gear, steer, vehicle mode\n";
+    for (const auto& p : g_path)
+        std::cout << p.x << ", " << p.y << ", " << p.theta
+        << ", " << p.gear << ", " << p.steering << ", " << p.vehicle << std::endl;
+
+    evaluatePath metrics = evaluatePathMetrics(g_path, hastar.getNearestObsDist());
+    std::cout << "=== Path Evaluation ===\n";
+    std::cout << "Total Length    : " << metrics.total_length << " m\n";
+    std::cout << "Gear Switches   : " << metrics.gear_switch_cnt << " times\n";
+    std::cout << "Total Yaw Change: " << metrics.total_yaw_changes << " rad\n";
+    std::cout << "Min Clearance   : " << metrics.min_clearance << " m\n";
+    
+    savePathToBin(g_path, "/tmp/hybrid_astar_path");
+    
+    // for plot in controller packages
+    mapInfo mapinfo;
+    mapinfo.cell_size = cell_size;
+    mapinfo.resolution = resolution;
+    mapinfo.r_length = my_robot.robot_length;
+    mapinfo.r_width = my_robot.robot_width;
+    mapinfo.sx = sx;
+    mapinfo.sy = sy;
+    mapinfo.gx = gx;
+    mapinfo.gy = gy;
+    mapinfo.map = gt_map;
+
+    saveMapInfoToBin(mapinfo, "/tmp/parkinglot_map");
+    saveRobotConfigToBin(my_robot, "/tmp/robotconfig");
     // std::vector<State> load_path = loadPathFromBin("/tmp/hybrid_astar_path");
     // std::cout << "load path successfully" << std::endl;
     // for (const auto& p : load_path) {

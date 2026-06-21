@@ -39,7 +39,7 @@
 #define BICYCLE_MODEL_NX     5
 #define BICYCLE_MODEL_NZ     0
 #define BICYCLE_MODEL_NU     2
-#define BICYCLE_MODEL_NP     6
+#define BICYCLE_MODEL_NP     15
 #define BICYCLE_MODEL_NP_GLOBAL     0
 #define BICYCLE_MODEL_NBX    2
 #define BICYCLE_MODEL_NBX0   5

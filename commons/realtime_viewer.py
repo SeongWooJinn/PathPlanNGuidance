@@ -73,7 +73,7 @@ def load_global_path(filename):
 # ==========================================================
 # 2. 시각화 창 설정 및 맵 렌더링
 # ==========================================================
-map_file = "/tmp/mapinfo"
+map_file = "/tmp/parkinglot_map"
 grid, resolution, origin_x, origin_y, rows, cols = load_map_info(map_file)
 
 fig, ax = plt.subplots(figsize=(10, 10))

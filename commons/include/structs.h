@@ -107,6 +107,7 @@ struct RobotConfigs
     double delta_max = M_PI * 30.0 / 180.0; // rad
     double alpha = 90.0 * M_PI / 180.0;    // actionset범위 조절 가능 
     double beta = M_PI;     // 180도 회전 [-PI/2, PI/2] 
+    double nsteer = 5;
 };
 
 // plannerweights parameters for ros2 & standalone exe

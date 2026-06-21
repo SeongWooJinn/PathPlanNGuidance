@@ -12,9 +12,9 @@ def main():
 
     # 2. 바이너리 파일 로드
     try:
-        data = np.fromfile("/tmp/mpc_log", dtype=dt)
+        data = np.fromfile("/tmp/current_log", dtype=dt)
     except FileNotFoundError:
-        print("Error: /tmp/mpc_log 파일을 찾을 수 없습니다.")
+        print("Error: /tmp/current_log 파일을 찾을 수 없습니다.")
         return
 
     # # ============================================================

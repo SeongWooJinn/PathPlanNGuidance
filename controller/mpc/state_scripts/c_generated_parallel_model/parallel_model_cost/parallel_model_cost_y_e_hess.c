@@ -54,10 +54,10 @@ extern "C" {
 static const casadi_int casadi_s0[3] = {5, 1, 1};
 static const casadi_int casadi_s1[3] = {0, 1, 1};
 static const casadi_int casadi_s2[3] = {0, 0, 1};
-static const casadi_int casadi_s3[3] = {6, 1, 1};
+static const casadi_int casadi_s3[3] = {15, 1, 1};
 static const casadi_int casadi_s4[8] = {5, 5, 0, 0, 0, 0, 0, 0};
 
-/* parallel_model_cost_y_e_hess:(i0[5],i1[0],i2[0],i3[5],i4[],i5[6])->(o0[5x5,0nz]) */
+/* parallel_model_cost_y_e_hess:(i0[5],i1[0],i2[0],i3[5],i4[],i5[15])->(o0[5x5,0nz]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
   return 0;
 }

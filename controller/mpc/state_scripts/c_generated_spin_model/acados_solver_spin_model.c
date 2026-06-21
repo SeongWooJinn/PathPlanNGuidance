@@ -400,10 +400,14 @@ void spin_model_acados_create_set_default_parameters(spin_model_solver_capsule* 
     double* p = calloc(NP, sizeof(double));
     p[0] = -10000;
     p[1] = -10000;
-    p[2] = -10000;
     p[3] = -10000;
     p[4] = -10000;
-    p[5] = -10000;
+    p[6] = -10000;
+    p[7] = -10000;
+    p[9] = -10000;
+    p[10] = -10000;
+    p[12] = -10000;
+    p[13] = -10000;
 
     for (int i = 0; i <= N; i++) {
         spin_model_acados_update_params(capsule, i, p, NP);
@@ -542,12 +546,12 @@ void spin_model_acados_setup_nlp_in(spin_model_solver_capsule* capsule, const in
     // change only the non-zero elements:
     W_0[0+(NY0) * 0] = 10;
     W_0[1+(NY0) * 1] = 10;
-    W_0[2+(NY0) * 2] = 5;
+    W_0[2+(NY0) * 2] = 7;
     W_0[3+(NY0) * 3] = 1;
-    W_0[4+(NY0) * 4] = 1;
-    W_0[5+(NY0) * 5] = 0.1;
-    W_0[6+(NY0) * 6] = 0.05;
-    W_0[7+(NY0) * 7] = 100;
+    W_0[4+(NY0) * 4] = 2;
+    W_0[5+(NY0) * 5] = 1;
+    W_0[6+(NY0) * 6] = 1;
+    W_0[7+(NY0) * 7] = 2000;
     ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, 0, "W", W_0);
     free(W_0);
     double* yref = calloc(NY, sizeof(double));
@@ -562,12 +566,12 @@ void spin_model_acados_setup_nlp_in(spin_model_solver_capsule* capsule, const in
     // change only the non-zero elements:
     W[0+(NY) * 0] = 10;
     W[1+(NY) * 1] = 10;
-    W[2+(NY) * 2] = 5;
+    W[2+(NY) * 2] = 7;
     W[3+(NY) * 3] = 1;
-    W[4+(NY) * 4] = 1;
-    W[5+(NY) * 5] = 0.1;
-    W[6+(NY) * 6] = 0.05;
-    W[7+(NY) * 7] = 100;
+    W[4+(NY) * 4] = 2;
+    W[5+(NY) * 5] = 1;
+    W[6+(NY) * 6] = 1;
+    W[7+(NY) * 7] = 2000;
 
     for (int i = 1; i < N; i++)
     {
@@ -1022,7 +1026,7 @@ int spin_model_acados_update_params(spin_model_solver_capsule* capsule, int stag
 {
     int solver_status = 0;
 
-    int casadi_np = 6;
+    int casadi_np = 15;
     if (casadi_np != np) {
         printf("acados_update_params: trying to set %i parameters for external functions."
             " External function has %i parameters. Exiting.\n", np, casadi_np);

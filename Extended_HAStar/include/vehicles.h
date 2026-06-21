@@ -92,7 +92,7 @@ public:
 
     void setAnalyticPathSpace();
     void setVehicleProperties(double WB, double dmax, double length,
-        double width, double switch_time, double ref_vel, double fov, int nsteer = 5) override;
+        double width, double switch_time, double ref_vel, double fov, int nsteer) override;
     PathSegment propagate(const State& s, const int direction, const double action) override;
     double getEdgeCost(const PathSegment& seg, Node& from, Node& to) override;
     double getKinematicHeuristic(const Node& next, const Node& goal) override;

@@ -9,7 +9,7 @@ int main()
 {
     // 0. 필요한 전역맵, 전역경로, 로봇 정보 가져오기
     mapInfo mapinfo;
-    if (!loadMapInfoFromBin(mapinfo, "/tmp/mapinfo")) {
+    if (!loadMapInfoFromBin(mapinfo, "/tmp/parkinglot_map")) {
         std::cout << "Map load 실패" << std::endl;
         return -1;
     }
@@ -48,12 +48,12 @@ int main()
     double omega_dot_max = delta_dot_max;  // [spin] 제자리 최대 회전 각가속도 (rad/s2)
 
     // 도착허용범위 설정
-    double min_dist_thres = 10 * v_max * dt;    // 20 * 0.35
+    double min_dist_thres = 15 * v_max * dt;    // 20 * 0.35
     double zero_velocity_thres = std::max(0.01, dt * a_max); //dt * a_dec_mag;
     // 동적 각도 임계값 계산 (마진 1.5배 적용, 최소 0.1 rad 보장)
-    double spin_dtheta_thres = std::max(0.05, omega_max * dt * 1.5);
+    double spin_dtheta_thres = std::max(0.2, omega_max * dt * 1.5);
     // 자전거 모드는 최대 속도에서 최대 조향을 꺾었을 때 변하는 각도가 기준
-    double bi_dtheta_thres = std::max(0.05, (v_max * std::tan(delta_max) / wheelbase) * dt * 1.5);
+    double bi_dtheta_thres = std::max(0.2, (v_max * std::tan(delta_max) / wheelbase) * dt * 1.5);
 
     std::cout << "min_dist_thres: " << min_dist_thres 
               << ", " << "zero_velocity_thres: " << zero_velocity_thres
@@ -81,6 +81,7 @@ int main()
     double current_u[2] = {0.0, 0.0};
 
     // 3.1 [동적 장애물 초기화] 주차장 시나리오 모사
+    int num_obs = 5;    // 솔버가 인식 가능한 최대 장애물 개수(파이썬과 동일)
     std::vector<Obstacle> dynamic_obs;
     initDynamicObsInParkingLot(mapinfo, dynamic_obs);
 
@@ -88,7 +89,7 @@ int main()
     std::vector<std::pair<double, double>> controls;
     int closest_idx = 0;
 
-    std::vector<MpcResultLog> mpc_log;
+    std::vector<MpcResultLog> current_log;
     std::vector<guidanceLog> guid_log;
     std::cout << "init ref_traj.mode : " << resampled_traj[closest_idx].mode << std::endl;
     int recovery_cnt = 0;
@@ -102,10 +103,10 @@ int main()
         VehicleMode curr_mode = resampled_traj[closest_idx].mode;
         prev_mode = curr_mode;
 
-        // std::cout << "추종 인덱스: " << closest_idx << " | mode: " << curr_mode
-        //           << " | 현재 상태 X: " << current_x[0] << ", Y: " << current_x[1] 
-        //           << " , Theta: " << current_x[2] << ", v: " << current_x[3] << ", delta: " << current_x[4] 
-        //           << " | 제어 입력 a: " << current_u[0] << ", delta_dot: " << current_u[1] << std::endl;
+        std::cout << "추종 인덱스: " << closest_idx << " | mode: " << curr_mode
+                  << " | 현재 상태 X: " << current_x[0] << ", Y: " << current_x[1] 
+                  << " , Theta: " << current_x[2] << ", v: " << current_x[3] << ", delta: " << current_x[4] 
+                  << " | 제어 입력 a: " << current_u[0] << ", delta_dot: " << current_u[1] << std::endl;
 
         // 람다식으로 즉시 포인터에 할당
         MpcController& active_mode = [&](VehicleMode mode) -> MpcController& {
@@ -120,10 +121,10 @@ int main()
         if (active_mode.isGuidanceFinished(current_x)) break;
         // 현재 루프의 dt만큼 장애물 위치 이동
         updateObstacles(dynamic_obs, dt);
-        // 10m 이내에서 가장 위협적인 장애물 3개 추출 (파이썬 세팅 기준)
-        std::vector<Obstacle> top_k_obs = getTopKObstacles(current_x, dynamic_obs, 3);
-        // 솔버의 파라미터에 유효 장애물 3개의 좌표 주입
-        active_mode.setObstacleParameters(top_k_obs, 3, dt);
+        // 10m 이내에서 가장 위협적인 장애물 n개 추출 (파이썬 세팅 기준)
+        std::vector<Obstacle> top_k_obs = getTopKObstacles(current_x, dynamic_obs, num_obs);
+        // 솔버의 파라미터에 유효 장애물 n개의 좌표 주입
+        active_mode.setObstacleParameters(top_k_obs, num_obs, dt);
         // for (const auto& obs : top_k_obs) {
         //     if (obs.x > 0 && obs.y > 0)
         //         std::cout << "obs point : " << obs.x << ", " << obs.y << std::endl;
@@ -183,35 +184,33 @@ int main()
         // current control inputs
         controls.push_back({current_u[0], current_u[1]});
 
-        // save mpc results
-        MpcResultLog curr_mpc;
-        curr_mpc.x         = current_x[0];
-        curr_mpc.y         = current_x[1];
-        curr_mpc.theta     = current_x[2];
-        curr_mpc.v         = current_x[3];
-        curr_mpc.delta     = current_x[4];
-        curr_mpc.a         = current_u[0];
-        curr_mpc.delta_dot = current_u[1];
-        mpc_log.emplace_back(curr_mpc);
+        // save current log results
+        MpcResultLog curr_state;
+        curr_state.x         = current_x[0];
+        curr_state.y         = current_x[1];
+        curr_state.theta     = current_x[2];
+        curr_state.v         = current_x[3];
+        curr_state.delta     = current_x[4];
+        curr_state.a         = current_u[0];
+        curr_state.delta_dot = current_u[1];
+        current_log.emplace_back(curr_state);
 
         // save guidance log
-        guidanceLog tmp;
-        tmp.mpc_log = curr_mpc;
-        tmp.closest_idx = closest_idx;
-        guid_log.emplace_back(tmp);
+        guid_log.push_back({curr_state, closest_idx});
 
     }
 
     std::cout << "경로 추종 시뮬레이션 완료." << std::endl;
-    saveMpcResultToBin(mpc_log, "/tmp/mpc_log");
+    saveMpcResultToBin(current_log, "/tmp/current_log");
 
     // evaluate tracking performance
-    evaluateGuidance metrics = evaluateGuidanceMetrics(guid_log, resampled_traj);
+    evaluateGuidance metrics = evaluateGuidanceMetrics(guid_log, resampled_traj, dt);
     std::cout << "========== MPC Tracking Evaluation ==========\n";
     std::cout << "Crosstrack Error (RMSE) : " << metrics.rmse_cte << " m\n";
     std::cout << "Max Crosstrack Error    : " << metrics.max_cte << " m\n";
     std::cout << "Heading Error (RMSE)    : " << metrics.rmse_he * 180.0 / M_PI << " deg\n";
     std::cout << "Max Heading Error       : " << metrics.max_he * 180.0 / M_PI << " deg\n";
+    std::cout << "Jerk Accel (RMSE)       : " << metrics.rmse_jerk_a << " m/s^3\n";
     std::cout << "Control Effort (Smooth) : " << metrics.total_control_effort << "\n";
     std::cout << "=============================================\n";
 

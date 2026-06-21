@@ -37,7 +37,7 @@
 #define SPIN_MODEL_NX     5
 #define SPIN_MODEL_NZ     0
 #define SPIN_MODEL_NU     2
-#define SPIN_MODEL_NP     6
+#define SPIN_MODEL_NP     15
 
 #ifdef __cplusplus
 extern "C" {

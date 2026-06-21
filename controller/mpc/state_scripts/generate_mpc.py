@@ -26,11 +26,11 @@ def generate_mpc(model):
     # 파라미터 (Parameters): 실시간으로 변하는 외부 입력값
     # ===============================================
     # x_obs, y_obs (가장 가까운 장애물의 좌표)
-    num_obs = 3                 # real time num obs
-    p = ca.SX.sym('p', 2 * num_obs) 
+    num_obs = 5                 # real time num obs
+    p = ca.SX.sym('p', 3 * num_obs)     # x, y, r
     ocp.model.p = p             # 모델에 파라미터 등록
-    # [x1, y1, x2, y2, x3, y3] 유령 장애물
-    ocp.parameter_values = np.array([-10000.0, -10000.0] * num_obs) 
+    # [x1, y1, r1, x2, y2, 12, x3, y3, r3] 유령 장애물
+    ocp.parameter_values = np.array([-10000.0, -10000.0, 0.0] * num_obs) 
 
     # ===============================================
     # 목적 함수 (Cost Function) 세팅 (NONLINEAR_LS 방식)
@@ -46,14 +46,15 @@ def generate_mpc(model):
 
     # 민코프스키 하이퍼 타원 파라미터 세팅
     # 차량의 절반 길이/폭 + 안전 마진
-    a_radius = 0.8  # 차량 전후 방향 반경
-    b_radius = 0.5  # 차량 좌우 방향 반경
+    half_a = 0.8    # 차량 전후 방향 반경
+    half_b = 0.5    # 차량 좌우 방향 반경
     epsilon = 1e-4
     
     obs_penalty = 0.0
     for i in range(num_obs):
-        x_obs = p[2*i]
-        y_obs = p[2*i + 1]
+        x_obs = p[3*i]
+        y_obs = p[3*i + 1]
+        r_obs = p[3*i + 2]
 
         # dx, dy
         dx = model.x[0] - x_obs
@@ -66,6 +67,8 @@ def generate_mpc(model):
 
         # 4차 하이퍼 타원 (Minkowski Ellipse) 방정식
         # E <= 1 이면 로봇 영역 내부 침범을 의미
+        a_radius = half_a + r_obs
+        b_radius = half_b + r_obs
         E = (dx_rot / a_radius)**4 + (dy_rot / b_radius)**4
         
         # 타원에 가까워질수록 페널티가 기하급수적으로 증가
@@ -83,10 +86,11 @@ def generate_mpc(model):
     ocp.model.cost_y_expr_e = model.x
 
     # 가중치 행렬 (W: Weight) - Q, R, W_obs가 합쳐진 대각 행렬
-    W = np.diag([10.0, 10.0, 5.0, 1.0, 1.0,  # Q (상태 추종 가중치)
-                 0.1, 0.05,                   # R (제어 부드러움 가중치)
-                #  1.0, 5.0,                   # R (제어 부드러움 가중치)
-                 100.0])                     # W_obs (장애물 회피 척력 가중치)
+    # W = np.diag([10.0, 10.0, 5.0, 1.0, 1.0,  # Q (상태 추종 가중치) x, y, theta, v, delta
+    W = np.diag([12.0, 12.0, 8.0, 1.0, 2.0,  # Q (상태 추종 가중치) x, y, theta, v, delta
+                #  0.1, 0.05,                   # R (제어 부드러움 가중치) a, delta_dot
+                 1.0, 1.0,                   # R (제어 부드러움 가중치, 클수록 부드러움) a, delta_dot
+                 2000.0])                     # W_obs (장애물 회피 척력 가중치)
     ocp.cost.W_0 = W
     ocp.cost.W = W
     ocp.cost.W_e = np.diag([10.0, 10.0, 5.0, 1.0, 1.0]) # 종점 가중치

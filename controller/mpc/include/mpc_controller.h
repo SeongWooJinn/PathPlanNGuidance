@@ -160,14 +160,13 @@ public:
         int search_limit = std::min(current_closest_idx_ + 10, (int)ref_traj_.size());
         for (int i = current_closest_idx_; i < search_limit; ++i) {
             
-            double dist;
+            double dist = 0.0;
             if (curr_mode == VehicleMode::SpinMode) {
-                best_idx = std::min(current_closest_idx_ + 1, search_limit - 1);
-                // // 스핀 모드에서는 각도 차이를 거리로 간주하여 인덱스를 전진
-                // double dtheta = curr[2] - ref_traj_[i].theta;
-                // while (dtheta > M_PI) dtheta -= 2 * M_PI;
-                // while (dtheta < -M_PI) dtheta += 2 * M_PI;
-                // dist = std::abs(dtheta);
+                // Spin 모드에서는 위치 이동이 없으므로, 헤딩 각도 차이를 거리로 환산하여 평가
+                double dtheta = std::abs(normalizeAngle(curr[2] - ref_traj_[i].theta));
+                dist = dtheta;
+                // best_idx = std::min(current_closest_idx_ + 1, search_limit - 1);
+                
             } else {
                 // 자전거 모드 등에서는 기존처럼 유클리디안 거리 사용
                 double dx = curr[0] - ref_traj_[i].x;
@@ -184,28 +183,51 @@ public:
         double dy_cur = curr[1] - ref_traj_[best_idx].y;
         double dtheta_cur = std::abs(normalizeAngle(curr[2] - ref_traj_[best_idx].theta));
         double ddelta_cur = std::abs(normalizeAngle(curr[4] - ref_traj_[best_idx].delta));
+        double dist_curr = std::hypot(dx_cur, dy_cur);
 
         VehicleMode best_mode = ref_traj_[best_idx].mode;
-        // 속도/거리/헤딩오차 도착허용범위 판단
-        switch (best_mode)
-        {
-        case VehicleMode::ParallelMode:     
-            if (std::hypot(dx_cur, dy_cur) < min_d ) { //&& std::abs(ref_traj_[best_idx].v) < zero_v) {
-                best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
-            }
-            break;
-        case VehicleMode::SpinMode:     
-            if (dtheta_cur < spin_dtheta && std::abs(ref_traj_[best_idx].v) < zero_v) {
-                best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
-            }
-            break;
-        default:    // bicycle  dtheta_cur < 0.2
-            if (std::hypot(dx_cur, dy_cur) < min_d && dtheta_cur < bi_dtheta) {
-                best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
-            }
-            break;
+        bool is_arrived = false;
+
+        switch (best_mode) {
+            case VehicleMode::ParallelMode:     
+                if (dist_curr < min_d) is_arrived = true;
+                break;
+            case VehicleMode::SpinMode:     
+                if (dtheta_cur < spin_dtheta) is_arrived = true;
+                break;
+            default: // Bicycle Mode
+                if (dist_curr < min_d && dtheta_cur < bi_dtheta) is_arrived = true;
+                break;
+        }
+        
+        // 도달했을 경우에만 인덱스 전진 (역행 방지)
+        if (is_arrived) {
+            // current_closest_idx_가 아닌, 현재 찾은 best_idx를 기준으로 +1 전진
+            best_idx = std::min(best_idx + 1, (int)ref_traj_.size() - 1);
         }
         current_closest_idx_ = best_idx;
+    
+
+        // // 속도/거리/헤딩오차 도착허용범위 판단
+        // switch (best_mode)
+        // {
+        // case VehicleMode::ParallelMode:     
+        //     if (dist_curr < min_d ) { //&& std::abs(ref_traj_[best_idx].v) < zero_v) {
+        //         best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
+        //     }
+        //     break;
+        // case VehicleMode::SpinMode:     
+        //     if (dtheta_cur < spin_dtheta && std::abs(ref_traj_[best_idx].v) < zero_v) {
+        //         best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
+        //     }
+        //     break;
+        // default:    // bicycle  dtheta_cur < 0.2
+        //     if (dist_curr < min_d && dtheta_cur < bi_dtheta) {
+        //         best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
+        //     }
+        //     break;
+        // }
+        // current_closest_idx_ = best_idx;
 
         // if (current_closest_idx_ > 34)
         // {
@@ -334,12 +356,14 @@ public:
     void setObstacleParameters(const std::vector<Obstacle>& top_obs, int k, double dt) override
     {
         // k -> 파이썬에서 정의
-        std::vector<double> p_data(k * 2, 0.0);
+        std::vector<double> p_data(k * 3, 0.0);
         // 예측 호라이즌 내 솔버에서 인식하는 장애물 개수(k)만큼 장애물들의 예측위치 주입
         for (int i = 0; i <= N_; i++) {
             for (int j = 0; j < k; ++j) {
-                p_data[j*2]     = top_obs[j].x + top_obs[j].vx * dt;
-                p_data[j*2 + 1] = top_obs[j].y + top_obs[j].vy * dt;
+                p_data[j*3]     = top_obs[j].x + top_obs[j].vx * dt;
+                p_data[j*3 + 1] = top_obs[j].y + top_obs[j].vy * dt;
+                p_data[j*3 + 2] = top_obs[j].radius;
+
             }
             ocp_nlp_in_set(nlp_config_, nlp_dims_, nlp_in_, i, "parameter_values", p_data.data());
         }
