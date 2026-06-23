@@ -87,8 +87,8 @@ inline void initDynamicObsInParkingLot(
     double obs2_x = [&](double x) 
                         {
                             return top_left_x + x * res;
-                        }(cols * 0.1); // 맵 좌측 10% 지점
-    dynamic_obs.push_back({obs2_x, aisle2_y, 0.8, 0.15, 0.0}); // 반경 0.8m, 속도 0.2m/s
+                        }(cols * 0.9); // 맵 좌측 10% 지점
+    dynamic_obs.push_back({obs2_x, aisle2_y, 0.8, -0.15, 0.0}); // 반경 0.8m, 속도 0.2m/s
     
     // Obstacle 3 위치: 상단 주차장(0.5/6 지점)에서 아래쪽(통로)으로 후진하며 튀어나옴 (+vy)
     double parking_spot_y = [&](double y)
@@ -106,11 +106,11 @@ inline void initDynamicObsInParkingLot(
                         {
                             return y * res + top_left_y;
                         }((3.0 * rows / 6.0));
-    double obs4_x = [&](double x) 
-                        {
-                            return top_left_x + x * res;
-                        }(cols * 0.0); 
-    dynamic_obs.push_back({obs4_x, aisle4_y, 1.5, 0.2, 0.0}); // 반경 0.5m, y방향 속도 0.15m/s
+    // double obs4_x = [&](double x) 
+    //                     {
+    //                         return top_left_x + x * res;
+    //                     }(cols * 0.0); 
+    // dynamic_obs.push_back({obs4_x, aisle4_y, 1.5, 0.2, 0.0}); // 반경 0.5m, y방향 속도 0.15m/s
 }
 
 inline void saveCurrentDataToBin(

@@ -544,14 +544,14 @@ void spin_model_acados_setup_nlp_in(spin_model_solver_capsule* capsule, const in
 
    double* W_0 = calloc(NY0*NY0, sizeof(double));
     // change only the non-zero elements:
-    W_0[0+(NY0) * 0] = 12;
-    W_0[1+(NY0) * 1] = 12;
-    W_0[2+(NY0) * 2] = 8;
-    W_0[3+(NY0) * 3] = 1;
+    W_0[0+(NY0) * 0] = 2;
+    W_0[1+(NY0) * 1] = 2;
+    W_0[2+(NY0) * 2] = 12;
+    W_0[3+(NY0) * 3] = 2;
     W_0[4+(NY0) * 4] = 2;
-    W_0[5+(NY0) * 5] = 0.3;
-    W_0[6+(NY0) * 6] = 0.3;
-    W_0[7+(NY0) * 7] = 2000;
+    W_0[5+(NY0) * 5] = 1;
+    W_0[6+(NY0) * 6] = 10;
+    W_0[7+(NY0) * 7] = 3000;
     ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, 0, "W", W_0);
     free(W_0);
     double* yref = calloc(NY, sizeof(double));
@@ -564,14 +564,14 @@ void spin_model_acados_setup_nlp_in(spin_model_solver_capsule* capsule, const in
     free(yref);
     double* W = calloc(NY*NY, sizeof(double));
     // change only the non-zero elements:
-    W[0+(NY) * 0] = 12;
-    W[1+(NY) * 1] = 12;
-    W[2+(NY) * 2] = 8;
-    W[3+(NY) * 3] = 1;
+    W[0+(NY) * 0] = 2;
+    W[1+(NY) * 1] = 2;
+    W[2+(NY) * 2] = 12;
+    W[3+(NY) * 3] = 2;
     W[4+(NY) * 4] = 2;
-    W[5+(NY) * 5] = 0.3;
-    W[6+(NY) * 6] = 0.3;
-    W[7+(NY) * 7] = 2000;
+    W[5+(NY) * 5] = 1;
+    W[6+(NY) * 6] = 10;
+    W[7+(NY) * 7] = 3000;
 
     for (int i = 1; i < N; i++)
     {
@@ -585,11 +585,11 @@ void spin_model_acados_setup_nlp_in(spin_model_solver_capsule* capsule, const in
 
     double* W_e = calloc(NYN*NYN, sizeof(double));
     // change only the non-zero elements:
-    W_e[0+(NYN) * 0] = 10;
-    W_e[1+(NYN) * 1] = 10;
-    W_e[2+(NYN) * 2] = 5;
-    W_e[3+(NYN) * 3] = 1;
-    W_e[4+(NYN) * 4] = 1;
+    W_e[0+(NYN) * 0] = 2;
+    W_e[1+(NYN) * 1] = 2;
+    W_e[2+(NYN) * 2] = 12;
+    W_e[3+(NYN) * 3] = 2;
+    W_e[4+(NYN) * 4] = 2;
     ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, N, "W", W_e);
     free(W_e);
     ocp_nlp_cost_model_set_external_param_fun(nlp_config, nlp_dims, nlp_in, 0, "nls_y_fun", &capsule->cost_y_0_fun);

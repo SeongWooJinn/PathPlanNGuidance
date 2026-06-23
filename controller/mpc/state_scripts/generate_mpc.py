@@ -46,8 +46,8 @@ def generate_mpc(model):
 
     # 민코프스키 하이퍼 타원 파라미터 세팅
     # 차량의 절반 길이/폭 + 안전 마진
-    half_a = 0.8    # 차량 전후 방향 반경
-    half_b = 0.5    # 차량 좌우 방향 반경
+    half_a = 0.6    # 차량 전후 방향 반경(robot length/2 + margin)
+    half_b = 0.5    # 차량 좌우 방향 반경(robot width/2 + margin)
     epsilon = 1e-4
     
     obs_penalty = 0.0
@@ -87,13 +87,14 @@ def generate_mpc(model):
 
     # 가중치 행렬 (W: Weight) - Q, R, W_obs가 합쳐진 대각 행렬
     # W = np.diag([10.0, 10.0, 5.0, 1.0, 1.0,  # Q (상태 추종 가중치) x, y, theta, v, delta
-    W = np.diag([12.0, 12.0, 8.0, 1.0, 2.0,  # Q (상태 추종 가중치) x, y, theta, v, delta
+    # W = np.diag([12.0, 12.0, 8.0, 2.0, 2.0,  # Q (상태 추종 가중치) x, y, theta, v, delta    
+    W = np.diag([2.0, 2.0, 12.0, 2.0, 2.0,  # Q (상태 추종 가중치) x, y, theta, v, delta
                 #  0.1, 0.05,                   # R (제어 부드러움 가중치) a, delta_dot
-                 0.3, 0.3,                   # R (제어 부드러움 가중치, 클수록 부드러움) a, delta_dot
-                 2000.0])                     # W_obs (장애물 회피 척력 가중치)
+                 1.0, 10.0,                   # R (제어 부드러움 가중치, 클수록 부드러움) a, delta_dot
+                 3000.0])                     # W_obs (장애물 회피 척력 가중치)
     ocp.cost.W_0 = W
     ocp.cost.W = W
-    ocp.cost.W_e = np.diag([10.0, 10.0, 5.0, 1.0, 1.0]) # 종점 가중치
+    ocp.cost.W_e = np.diag([2.0, 2.0, 12.0, 2.0, 2.0]) # 종점 가중치
 
     # 참조 궤적 초기화 (나중에 C++에서 덮어씀)
     ocp.cost.yref_0 = np.zeros(ny)

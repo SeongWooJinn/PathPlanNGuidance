@@ -48,12 +48,12 @@ int main()
     double omega_dot_max = delta_dot_max;  // [spin] 제자리 최대 회전 각가속도 (rad/s2)
 
     // 도착허용범위 설정
-    double min_dist_thres = 15 * v_max * dt;    // 20 * 0.35
+    double min_dist_thres = 1.5;//15 * v_max * dt;    // 20 * 0.35
     double zero_velocity_thres = std::max(0.01, dt * a_max); //dt * a_dec_mag;
     // 동적 각도 임계값 계산 (마진 1.5배 적용, 최소 0.1 rad 보장)
-    double spin_dtheta_thres = std::max(0.2, omega_max * dt * 1.5);
+    double spin_dtheta_thres = 90 * M_PI / 180.0;//std::max(0.2, omega_max * dt * 1.5);
     // 자전거 모드는 최대 속도에서 최대 조향을 꺾었을 때 변하는 각도가 기준
-    double bi_dtheta_thres = std::max(0.2, (v_max * std::tan(delta_max) / wheelbase) * dt * 1.5);
+    double bi_dtheta_thres = 45 * M_PI / 180.0; //robotconfig.delta_max; //std::max(0.2, (v_max * std::tan(delta_max) / wheelbase) * dt * 1.5);
 
     std::cout << "min_dist_thres: " << min_dist_thres 
               << ", " << "zero_velocity_thres: " << zero_velocity_thres

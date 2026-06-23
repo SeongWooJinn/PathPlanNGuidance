@@ -157,7 +157,7 @@ public:
         // 거리기반 인덱스 탐색
         double min_dist = 1e10;
         int best_idx = current_closest_idx_;
-        int search_limit = std::min(current_closest_idx_ + 10, (int)ref_traj_.size());
+        int search_limit = std::min(current_closest_idx_ + 100, (int)ref_traj_.size());
         for (int i = current_closest_idx_; i < search_limit; ++i) {
             
             double dist = 0.0;
