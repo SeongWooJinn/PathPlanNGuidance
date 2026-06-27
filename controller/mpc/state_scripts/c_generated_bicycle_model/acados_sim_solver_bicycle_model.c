@@ -193,6 +193,16 @@ int bicycle_model_acados_sim_create(bicycle_model_sim_solver_capsule * capsule)
     p[10] = -10000;
     p[12] = -10000;
     p[13] = -10000;
+    p[15] = -10000;
+    p[16] = -10000;
+    p[18] = -10000;
+    p[19] = -10000;
+    p[21] = -10000;
+    p[22] = -10000;
+    p[24] = -10000;
+    p[25] = -10000;
+    p[27] = -10000;
+    p[28] = -10000;
 
     bicycle_model_acados_sim_update_params(capsule, p, np);
     free(p);

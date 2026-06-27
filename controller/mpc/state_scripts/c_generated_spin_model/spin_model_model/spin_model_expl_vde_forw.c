@@ -55,9 +55,9 @@ static const casadi_int casadi_s0[3] = {5, 1, 1};
 static const casadi_int casadi_s1[3] = {5, 5, 1};
 static const casadi_int casadi_s2[3] = {5, 2, 1};
 static const casadi_int casadi_s3[3] = {2, 1, 1};
-static const casadi_int casadi_s4[3] = {15, 1, 1};
+static const casadi_int casadi_s4[3] = {30, 1, 1};
 
-/* spin_model_expl_vde_forw:(i0[5],i1[5x5],i2[5x2],i3[2],i4[15])->(o0[5],o1[5x5],o2[5x2]) */
+/* spin_model_expl_vde_forw:(i0[5],i1[5x5],i2[5x2],i3[2],i4[30])->(o0[5],o1[5x5],o2[5x2]) */
 static int casadi_f0(const casadi_real** arg, casadi_real** res, casadi_int* iw, casadi_real* w, int mem) {
   casadi_real a0, a1;
   a0=0.;

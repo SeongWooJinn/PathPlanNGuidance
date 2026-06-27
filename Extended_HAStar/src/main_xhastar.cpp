@@ -40,12 +40,13 @@ int main() {
     my_robot.switch_time = 1.0;
     my_robot.ref_vel = 0.5;
     my_robot.sensor_fov = 2.0 * M_PI / 3.0;
+    // generate_mpc.py constraints modify!!!!
     my_robot.delta_max = 30.0 * M_PI / 180.0; // rad
-    // my_robot.alpha = 75.0 * M_PI / 180.0;    // spin mode 안쓸때, nsteer도 크게필
+    // my_robot.delta_max = 75.0 * M_PI / 180.0;    // spin mode 안쓸때, nsteer도 크게필
     // my_robot.beta = M_PI;     // 180도 회전 [-PI/2, PI/2]  
     my_robot.alpha = 20.0 * M_PI / 180.0;    // parallel mode max alpha, actionset범위 조절 가능 
     my_robot.beta = 20.0 * M_PI / 180.0;     // spin mode max beta, 180도 회전 [-PI/2, PI/2]  
-    my_robot.nsteer = 5;
+    my_robot.nsteer = 7;
 
     // // ROBOT2 : TURTLEBOT3 WAFFLE
     // double WB = 0.14;
@@ -140,7 +141,7 @@ int main() {
     // vehicle mode 등록
     hastar.registVehicleMode(std::move(bicycle));       // non holonimic mode essential!!!
     // hastar.registVehicleMode(std::move(crab));
-    hastar.registVehicleMode(std::move(spin));
+    // hastar.registVehicleMode(std::move(spin));
 
     // Global Hybrid AStar Path
     //std::vector<std::pair<State, VehicleMode>> g_path;

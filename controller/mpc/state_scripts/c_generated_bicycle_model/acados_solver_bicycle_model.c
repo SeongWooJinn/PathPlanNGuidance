@@ -408,6 +408,16 @@ void bicycle_model_acados_create_set_default_parameters(bicycle_model_solver_cap
     p[10] = -10000;
     p[12] = -10000;
     p[13] = -10000;
+    p[15] = -10000;
+    p[16] = -10000;
+    p[18] = -10000;
+    p[19] = -10000;
+    p[21] = -10000;
+    p[22] = -10000;
+    p[24] = -10000;
+    p[25] = -10000;
+    p[27] = -10000;
+    p[28] = -10000;
 
     for (int i = 0; i <= N; i++) {
         bicycle_model_acados_update_params(capsule, i, p, NP);
@@ -688,8 +698,8 @@ void bicycle_model_acados_setup_nlp_in(bicycle_model_solver_capsule* capsule, co
     double* ubx = lubx + NBX;
     lbx[0] = -0.6;
     ubx[0] = 0.6;
-    lbx[1] = -0.7;
-    ubx[1] = 0.7;
+    lbx[1] = -1.5;
+    ubx[1] = 1.5;
 
     for (int i = 1; i < N; i++)
     {
@@ -1028,7 +1038,7 @@ int bicycle_model_acados_update_params(bicycle_model_solver_capsule* capsule, in
 {
     int solver_status = 0;
 
-    int casadi_np = 15;
+    int casadi_np = 30;
     if (casadi_np != np) {
         printf("acados_update_params: trying to set %i parameters for external functions."
             " External function has %i parameters. Exiting.\n", np, casadi_np);

@@ -53,7 +53,7 @@ int main()
     // 동적 각도 임계값 계산 (마진 1.5배 적용, 최소 0.1 rad 보장)
     double spin_dtheta_thres = 90 * M_PI / 180.0;//std::max(0.2, omega_max * dt * 1.5);
     // 자전거 모드는 최대 속도에서 최대 조향을 꺾었을 때 변하는 각도가 기준
-    double bi_dtheta_thres = 45 * M_PI / 180.0; //robotconfig.delta_max; //std::max(0.2, (v_max * std::tan(delta_max) / wheelbase) * dt * 1.5);
+    double bi_dtheta_thres = 90 * M_PI / 180.0; //robotconfig.delta_max; //std::max(0.2, (v_max * std::tan(delta_max) / wheelbase) * dt * 1.5);
 
     std::cout << "min_dist_thres: " << min_dist_thres 
               << ", " << "zero_velocity_thres: " << zero_velocity_thres
@@ -81,9 +81,10 @@ int main()
     double current_u[2] = {0.0, 0.0};
 
     // 3.1 [동적 장애물 초기화] 주차장 시나리오 모사
-    int num_obs = 5;    // 솔버가 인식 가능한 최대 장애물 개수(파이썬과 동일)
+    int num_obs = 10;    // 솔버가 인식 가능한 최대 장애물 개수(파이썬과 동일)
     std::vector<Obstacle> dynamic_obs;
     initDynamicObsInParkingLot(mapinfo, dynamic_obs);
+    ObstacleManager obsMng(mapinfo.map, num_obs);
 
     std::vector<State> track_path;
     std::vector<std::pair<double, double>> controls;
@@ -103,10 +104,10 @@ int main()
         VehicleMode curr_mode = resampled_traj[closest_idx].mode;
         prev_mode = curr_mode;
 
-        std::cout << "추종 인덱스: " << closest_idx << " | mode: " << curr_mode
-                  << " | 현재 상태 X: " << current_x[0] << ", Y: " << current_x[1] 
-                  << " , Theta: " << current_x[2] << ", v: " << current_x[3] << ", delta: " << current_x[4] 
-                  << " | 제어 입력 a: " << current_u[0] << ", delta_dot: " << current_u[1] << std::endl;
+        // std::cout << "추종 인덱스: " << closest_idx << " | mode: " << curr_mode
+        //           << " | 현재 상태 X: " << current_x[0] << ", Y: " << current_x[1] 
+        //           << " , Theta: " << current_x[2] << ", v: " << current_x[3] << ", delta: " << current_x[4] 
+        //           << " | 제어 입력 a: " << current_u[0] << ", delta_dot: " << current_u[1] << std::endl;
 
         // 람다식으로 즉시 포인터에 할당
         MpcController& active_mode = [&](VehicleMode mode) -> MpcController& {
@@ -119,10 +120,11 @@ int main()
 
         // 0) 도착여부 판단
         if (active_mode.isGuidanceFinished(current_x)) break;
-        // 현재 루프의 dt만큼 장애물 위치 이동
+        // 현재 루프의 dt만큼 장애물 위치 이동(실제로는 외부 모듈에서 받음)
         updateObstacles(dynamic_obs, dt);
+        std::vector<Obstacle> top_k_obs = obsMng.getTopKObstacles(current_x, dynamic_obs, 10.0, 3.0);
         // 10m 이내에서 가장 위협적인 장애물 n개 추출 (파이썬 세팅 기준)
-        std::vector<Obstacle> top_k_obs = getTopKObstacles(current_x, dynamic_obs, num_obs);
+        // std::vector<Obstacle> top_k_obs = getTopKDynamicObstacles(current_x, dynamic_obs, 10.0, num_obs);
         // 솔버의 파라미터에 유효 장애물 n개의 좌표 주입
         active_mode.setObstacleParameters(top_k_obs, num_obs, dt);
         // for (const auto& obs : top_k_obs) {

@@ -39,7 +39,7 @@
 #define SPIN_MODEL_NX     5
 #define SPIN_MODEL_NZ     0
 #define SPIN_MODEL_NU     2
-#define SPIN_MODEL_NP     15
+#define SPIN_MODEL_NP     30
 #define SPIN_MODEL_NP_GLOBAL     0
 #define SPIN_MODEL_NBX    2
 #define SPIN_MODEL_NBX0   5

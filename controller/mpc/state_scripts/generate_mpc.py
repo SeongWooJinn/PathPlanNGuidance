@@ -26,7 +26,7 @@ def generate_mpc(model):
     # 파라미터 (Parameters): 실시간으로 변하는 외부 입력값
     # ===============================================
     # x_obs, y_obs (가장 가까운 장애물의 좌표)
-    num_obs = 5                 # real time num obs
+    num_obs = 10                 # real time num obs
     p = ca.SX.sym('p', 3 * num_obs)     # x, y, r
     ocp.model.p = p             # 모델에 파라미터 등록
     # [x1, y1, r1, x2, y2, 12, x3, y3, r3] 유령 장애물
@@ -116,10 +116,10 @@ def generate_mpc(model):
     # reference : nav2_params.yaml -> ExtendedHybridAStar
     if (model.name == 'bicycle_model'):
         # 상태 제약: v(인덱스 3), delta(인덱스 4)
-        # ocp.constraints.lbx = np.array([-v_limit, -1.5]) 
-        # ocp.constraints.ubx = np.array([ v_limit,  1.5])
-        ocp.constraints.lbx = np.array([-v_limit, -0.7])    # 40 deg, (c++) max보다 크게 설정
-        ocp.constraints.ubx = np.array([ v_limit,  0.7])
+        ocp.constraints.lbx = np.array([-v_limit, -1.5]) 
+        ocp.constraints.ubx = np.array([ v_limit,  1.5])
+        # ocp.constraints.lbx = np.array([-v_limit, -0.7])    # 40 deg, (c++) max보다 크게 설정
+        # ocp.constraints.ubx = np.array([ v_limit,  0.7])
         ocp.constraints.idxbx = np.array([3, 4]) 
         
     elif (model.name == 'parallel_model'):
