@@ -51,9 +51,9 @@ int main()
     double min_dist_thres = 1.5;//15 * v_max * dt;    // 20 * 0.35
     double zero_velocity_thres = std::max(0.01, dt * a_max); //dt * a_dec_mag;
     // 동적 각도 임계값 계산 (마진 1.5배 적용, 최소 0.1 rad 보장)
-    double spin_dtheta_thres = 90 * M_PI / 180.0;//std::max(0.2, omega_max * dt * 1.5);
+    double spin_dtheta_thres = 180 * M_PI / 180.0;//std::max(0.2, omega_max * dt * 1.5);
     // 자전거 모드는 최대 속도에서 최대 조향을 꺾었을 때 변하는 각도가 기준
-    double bi_dtheta_thres = 90 * M_PI / 180.0; //robotconfig.delta_max; //std::max(0.2, (v_max * std::tan(delta_max) / wheelbase) * dt * 1.5);
+    double bi_dtheta_thres = 180 * M_PI / 180.0; //robotconfig.delta_max; //std::max(0.2, (v_max * std::tan(delta_max) / wheelbase) * dt * 1.5);
 
     std::cout << "min_dist_thres: " << min_dist_thres 
               << ", " << "zero_velocity_thres: " << zero_velocity_thres
@@ -81,7 +81,7 @@ int main()
     double current_u[2] = {0.0, 0.0};
 
     // 3.1 [동적 장애물 초기화] 주차장 시나리오 모사
-    int num_obs = 10;    // 솔버가 인식 가능한 최대 장애물 개수(파이썬과 동일)
+    int num_obs = 8;    // 솔버가 인식 가능한 최대 장애물 개수(파이썬과 동일)
     std::vector<Obstacle> dynamic_obs;
     initDynamicObsInParkingLot(mapinfo, dynamic_obs);
     ObstacleManager obsMng(mapinfo.map, num_obs);
@@ -122,7 +122,7 @@ int main()
         if (active_mode.isGuidanceFinished(current_x)) break;
         // 현재 루프의 dt만큼 장애물 위치 이동(실제로는 외부 모듈에서 받음)
         updateObstacles(dynamic_obs, dt);
-        std::vector<Obstacle> top_k_obs = obsMng.getTopKObstacles(current_x, dynamic_obs, 10.0, 3.0);
+        std::vector<Obstacle> top_k_obs = obsMng.getTopKObstacles(current_x, dynamic_obs, 10.0, 2.0);
         // 10m 이내에서 가장 위협적인 장애물 n개 추출 (파이썬 세팅 기준)
         // std::vector<Obstacle> top_k_obs = getTopKDynamicObstacles(current_x, dynamic_obs, 10.0, num_obs);
         // 솔버의 파라미터에 유효 장애물 n개의 좌표 주입
@@ -163,14 +163,14 @@ int main()
         
         // 5) 최적화 계산 실패시 절차대로 회복기동
         if (!solve_success){
-            fsm.execute(current_x, current_u, closest_idx, curr_mode, active_mode, resampled_traj);
+            fsm.executeSolveFailure(current_x, current_u, closest_idx, curr_mode, active_mode, resampled_traj);
             // 루프를 종료(break)하지 않고 다음 제어 주기로 넘어감
             continue; 
         } 
-        else {
-            // 연산 성공 시 복구 플래그 초기화
-            fsm.reset();
-        }
+        // else {
+        //     // 연산 성공 시 복구 플래그 초기화
+        //     fsm.reset();
+        // }
         prev_mode = curr_mode; 
         
         // realtime_view를 위해 현재 위치와 장애물 저장

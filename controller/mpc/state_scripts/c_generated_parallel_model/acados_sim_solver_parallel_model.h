@@ -37,7 +37,7 @@
 #define PARALLEL_MODEL_NX     5
 #define PARALLEL_MODEL_NZ     0
 #define PARALLEL_MODEL_NU     2
-#define PARALLEL_MODEL_NP     30
+#define PARALLEL_MODEL_NP     24
 
 #ifdef __cplusplus
 extern "C" {

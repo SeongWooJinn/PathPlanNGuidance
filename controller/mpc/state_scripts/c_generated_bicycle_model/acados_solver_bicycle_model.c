@@ -414,10 +414,6 @@ void bicycle_model_acados_create_set_default_parameters(bicycle_model_solver_cap
     p[19] = -10000;
     p[21] = -10000;
     p[22] = -10000;
-    p[24] = -10000;
-    p[25] = -10000;
-    p[27] = -10000;
-    p[28] = -10000;
 
     for (int i = 0; i <= N; i++) {
         bicycle_model_acados_update_params(capsule, i, p, NP);
@@ -556,12 +552,12 @@ void bicycle_model_acados_setup_nlp_in(bicycle_model_solver_capsule* capsule, co
     // change only the non-zero elements:
     W_0[0+(NY0) * 0] = 2;
     W_0[1+(NY0) * 1] = 2;
-    W_0[2+(NY0) * 2] = 12;
-    W_0[3+(NY0) * 3] = 2;
-    W_0[4+(NY0) * 4] = 2;
+    W_0[2+(NY0) * 2] = 15;
+    W_0[3+(NY0) * 3] = 5;
+    W_0[4+(NY0) * 4] = 0.5;
     W_0[5+(NY0) * 5] = 1;
-    W_0[6+(NY0) * 6] = 10;
-    W_0[7+(NY0) * 7] = 3000;
+    W_0[6+(NY0) * 6] = 25;
+    W_0[7+(NY0) * 7] = 6000;
     ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, 0, "W", W_0);
     free(W_0);
     double* yref = calloc(NY, sizeof(double));
@@ -576,12 +572,12 @@ void bicycle_model_acados_setup_nlp_in(bicycle_model_solver_capsule* capsule, co
     // change only the non-zero elements:
     W[0+(NY) * 0] = 2;
     W[1+(NY) * 1] = 2;
-    W[2+(NY) * 2] = 12;
-    W[3+(NY) * 3] = 2;
-    W[4+(NY) * 4] = 2;
+    W[2+(NY) * 2] = 15;
+    W[3+(NY) * 3] = 5;
+    W[4+(NY) * 4] = 0.5;
     W[5+(NY) * 5] = 1;
-    W[6+(NY) * 6] = 10;
-    W[7+(NY) * 7] = 3000;
+    W[6+(NY) * 6] = 25;
+    W[7+(NY) * 7] = 6000;
 
     for (int i = 1; i < N; i++)
     {
@@ -597,9 +593,9 @@ void bicycle_model_acados_setup_nlp_in(bicycle_model_solver_capsule* capsule, co
     // change only the non-zero elements:
     W_e[0+(NYN) * 0] = 2;
     W_e[1+(NYN) * 1] = 2;
-    W_e[2+(NYN) * 2] = 12;
-    W_e[3+(NYN) * 3] = 2;
-    W_e[4+(NYN) * 4] = 2;
+    W_e[2+(NYN) * 2] = 15;
+    W_e[3+(NYN) * 3] = 5;
+    W_e[4+(NYN) * 4] = 0.5;
     ocp_nlp_cost_model_set(nlp_config, nlp_dims, nlp_in, N, "W", W_e);
     free(W_e);
     ocp_nlp_cost_model_set_external_param_fun(nlp_config, nlp_dims, nlp_in, 0, "nls_y_fun", &capsule->cost_y_0_fun);
@@ -698,8 +694,8 @@ void bicycle_model_acados_setup_nlp_in(bicycle_model_solver_capsule* capsule, co
     double* ubx = lubx + NBX;
     lbx[0] = -0.6;
     ubx[0] = 0.6;
-    lbx[1] = -1.5;
-    ubx[1] = 1.5;
+    lbx[1] = -0.7;
+    ubx[1] = 0.7;
 
     for (int i = 1; i < N; i++)
     {
@@ -1038,7 +1034,7 @@ int bicycle_model_acados_update_params(bicycle_model_solver_capsule* capsule, in
 {
     int solver_status = 0;
 
-    int casadi_np = 30;
+    int casadi_np = 24;
     if (casadi_np != np) {
         printf("acados_update_params: trying to set %i parameters for external functions."
             " External function has %i parameters. Exiting.\n", np, casadi_np);

@@ -5,13 +5,21 @@ import numpy as np
 from bicycle_model import export_bicycle_model
 from parallel_model import export_parallel_model
 from spin_model import export_spin_model
+import subprocess
+from pathlib import Path
+import os
+
+
+curr_path = Path(__file__).resolve().parent
 
 def generate_mpc(model):
     ocp = AcadosOcp()
     ocp.model = model
 
     # 모델 이름별로 폴더를 따로 만들도록 
-    ocp.code_export_directory = f'c_generated_{model.name}'
+    export_dir = curr_path / f'c_generated_{model.name}'
+    ocp.code_export_directory = str(export_dir)
+    # ocp.code_export_directory = f'c_generated_{model.name}'
 
     # 예측 호라이즌 설정 (예: 1초 앞을 0.05초 간격으로 20번 쪼개서 예측)
     # N = 150 #50
@@ -26,7 +34,7 @@ def generate_mpc(model):
     # 파라미터 (Parameters): 실시간으로 변하는 외부 입력값
     # ===============================================
     # x_obs, y_obs (가장 가까운 장애물의 좌표)
-    num_obs = 10                 # real time num obs
+    num_obs = 8                 # real time num obs
     p = ca.SX.sym('p', 3 * num_obs)     # x, y, r
     ocp.model.p = p             # 모델에 파라미터 등록
     # [x1, y1, r1, x2, y2, 12, x3, y3, r3] 유령 장애물
@@ -46,10 +54,12 @@ def generate_mpc(model):
 
     # 민코프스키 하이퍼 타원 파라미터 세팅
     # 차량의 절반 길이/폭 + 안전 마진
-    half_a = 0.6    # 차량 전후 방향 반경(robot length/2 + margin)
-    half_b = 0.5    # 차량 좌우 방향 반경(robot width/2 + margin)
+    half_a = 0.5    # 차량 전후 방향 반경(robot length/2)
+    half_b = 0.3    # 차량 좌우 방향 반경(robot width/2)
+    max_a = 0.6
+    max_b = 0.4
+
     epsilon = 1e-4
-    
     obs_penalty = 0.0
     for i in range(num_obs):
         x_obs = p[3*i]
@@ -67,8 +77,15 @@ def generate_mpc(model):
 
         # 4차 하이퍼 타원 (Minkowski Ellipse) 방정식
         # E <= 1 이면 로봇 영역 내부 침범을 의미
-        a_radius = half_a + r_obs
-        b_radius = half_b + r_obs
+        # a_radius = half_a + r_obs
+        # b_radius = half_b + r_obs
+
+        v = model.x[3]
+        dyn_a = half_a + ca.fmin(ca.fabs(v) * (max_a - half_a), (max_a - half_a))
+        dyn_b = half_b + ca.fmin(ca.fabs(v) * (max_b - half_b), (max_b - half_b))
+        a_radius = dyn_a + r_obs
+        b_radius = dyn_b + r_obs
+
         E = (dx_rot / a_radius)**4 + (dy_rot / b_radius)**4
         
         # 타원에 가까워질수록 페널티가 기하급수적으로 증가
@@ -86,15 +103,21 @@ def generate_mpc(model):
     ocp.model.cost_y_expr_e = model.x
 
     # 가중치 행렬 (W: Weight) - Q, R, W_obs가 합쳐진 대각 행렬
-    # W = np.diag([10.0, 10.0, 5.0, 1.0, 1.0,  # Q (상태 추종 가중치) x, y, theta, v, delta
-    # W = np.diag([12.0, 12.0, 8.0, 2.0, 2.0,  # Q (상태 추종 가중치) x, y, theta, v, delta    
-    W = np.diag([2.0, 2.0, 12.0, 2.0, 2.0,  # Q (상태 추종 가중치) x, y, theta, v, delta
+    w_x         = 2.0
+    w_y         = 2.0
+    w_theta     = 15.0 #12.0
+    w_v         = 5.0 #2.0
+    w_delta     = 0.5 #2.0
+    w_a         = 1.0
+    w_delta_dot = 25.0 #10.0
+    w_obs       = 6000.0
+    W = np.diag([w_x, w_y, w_theta, w_v, w_delta,  # Q (상태 추종 가중치) x, y, theta, v, delta
                 #  0.1, 0.05,                   # R (제어 부드러움 가중치) a, delta_dot
-                 1.0, 10.0,                   # R (제어 부드러움 가중치, 클수록 부드러움) a, delta_dot
-                 3000.0])                     # W_obs (장애물 회피 척력 가중치)
+                 w_a, w_delta_dot,                   # R (제어 부드러움 가중치, 클수록 부드러움) a, delta_dot
+                 w_obs])                     # W_obs (장애물 회피 척력 가중치)
     ocp.cost.W_0 = W
     ocp.cost.W = W
-    ocp.cost.W_e = np.diag([2.0, 2.0, 12.0, 2.0, 2.0]) # 종점 가중치
+    ocp.cost.W_e = np.diag([w_x, w_y, w_theta, w_v, w_delta]) # 종점 가중치
 
     # 참조 궤적 초기화 (나중에 C++에서 덮어씀)
     ocp.cost.yref_0 = np.zeros(ny)
@@ -116,10 +139,10 @@ def generate_mpc(model):
     # reference : nav2_params.yaml -> ExtendedHybridAStar
     if (model.name == 'bicycle_model'):
         # 상태 제약: v(인덱스 3), delta(인덱스 4)
-        ocp.constraints.lbx = np.array([-v_limit, -1.5]) 
-        ocp.constraints.ubx = np.array([ v_limit,  1.5])
-        # ocp.constraints.lbx = np.array([-v_limit, -0.7])    # 40 deg, (c++) max보다 크게 설정
-        # ocp.constraints.ubx = np.array([ v_limit,  0.7])
+        # ocp.constraints.lbx = np.array([-v_limit, -1.5]) 
+        # ocp.constraints.ubx = np.array([ v_limit,  1.5])
+        ocp.constraints.lbx = np.array([-v_limit, -0.7])    # 40 deg, (c++) max보다 크게 설정
+        ocp.constraints.ubx = np.array([ v_limit,  0.7])
         ocp.constraints.idxbx = np.array([3, 4]) 
         
     elif (model.name == 'parallel_model'):
@@ -152,8 +175,22 @@ def generate_mpc(model):
     # ocp.solver_options.nlp_solver_type = 'SQP'          # Full SQP(반복 연산)
     # ocp.solver_options.nlp_solver_max_iter = 100         # Full SQP일때 솔버가 최대 n번까지 반복해서 정답을 찾도록 허용
     
-    AcadosOcpSolver(ocp, json_file=f'acados_ocp_{model.name}.json')
+    json_path = curr_path / f'acados_ocp_{model.name}.json'
+    AcadosOcpSolver(ocp, json_file=str(json_path))
+    # AcadosOcpSolver(ocp, json_file=f'acados_ocp_{model.name}.json')
     print("성공적으로 C 코드가 생성되었습니다!")
+
+def build_make_shared_lib(dir):
+    generated_dir = curr_path / dir
+    if os.path.exists(generated_dir):
+        try:
+            # 지정된 폴더(cwd)에서 make shared_lib 실행
+            subprocess.run(["make", "shared_lib"], cwd=generated_dir, check=True)
+            print("✅ Shared library built successfully!")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Make failed with error: {e}")
+    else:
+        print(f"❌ Error: Directory '{generated_dir}' not found.")
 
 if __name__ == '__main__':
 
@@ -162,6 +199,12 @@ if __name__ == '__main__':
     # models = [export_bicycle_model(), export_parallel_model(), export_spin_model()]
     # for m in models:
     #     generate_mpc(m)
+
     generate_mpc(export_bicycle_model())
+    build_make_shared_lib("c_generated_bicycle_model")
+
     generate_mpc(export_parallel_model())
+    build_make_shared_lib("c_generated_parallel_model")
+
     generate_mpc(export_spin_model())
+    build_make_shared_lib("c_generated_spin_model")

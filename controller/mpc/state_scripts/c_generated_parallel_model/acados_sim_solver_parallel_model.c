@@ -199,10 +199,6 @@ int parallel_model_acados_sim_create(parallel_model_sim_solver_capsule * capsule
     p[19] = -10000;
     p[21] = -10000;
     p[22] = -10000;
-    p[24] = -10000;
-    p[25] = -10000;
-    p[27] = -10000;
-    p[28] = -10000;
 
     parallel_model_acados_sim_update_params(capsule, p, np);
     free(p);

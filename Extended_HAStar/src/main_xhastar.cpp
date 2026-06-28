@@ -141,7 +141,7 @@ int main() {
     // vehicle mode 등록
     hastar.registVehicleMode(std::move(bicycle));       // non holonimic mode essential!!!
     // hastar.registVehicleMode(std::move(crab));
-    // hastar.registVehicleMode(std::move(spin));
+    hastar.registVehicleMode(std::move(spin));
 
     // Global Hybrid AStar Path
     //std::vector<std::pair<State, VehicleMode>> g_path;

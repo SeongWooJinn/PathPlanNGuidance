@@ -196,7 +196,8 @@ public:
                 if (dtheta_cur < spin_dtheta) is_arrived = true;
                 break;
             default: // Bicycle Mode
-                if (dist_curr < min_d && dtheta_cur < bi_dtheta) is_arrived = true;
+                if (dist_curr < min_d)// && dtheta_cur < bi_dtheta) 
+                    is_arrived = true;
                 break;
         }
         
@@ -208,35 +209,6 @@ public:
         current_closest_idx_ = best_idx;
     
 
-        // // 속도/거리/헤딩오차 도착허용범위 판단
-        // switch (best_mode)
-        // {
-        // case VehicleMode::ParallelMode:     
-        //     if (dist_curr < min_d ) { //&& std::abs(ref_traj_[best_idx].v) < zero_v) {
-        //         best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
-        //     }
-        //     break;
-        // case VehicleMode::SpinMode:     
-        //     if (dtheta_cur < spin_dtheta && std::abs(ref_traj_[best_idx].v) < zero_v) {
-        //         best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
-        //     }
-        //     break;
-        // default:    // bicycle  dtheta_cur < 0.2
-        //     if (dist_curr < min_d && dtheta_cur < bi_dtheta) {
-        //         best_idx = std::min(current_closest_idx_ + 1, (int)ref_traj_.size() - 1);
-        //     }
-        //     break;
-        // }
-        // current_closest_idx_ = best_idx;
-
-        // if (current_closest_idx_ > 34)
-        // {
-        //     std::cout << "idx: " << current_closest_idx_ << " | delta dist: " << std::hypot(dx_cur, dy_cur) 
-        //             << " | delta_theta: " << dtheta_cur 
-        //             << " | abs vel: " << std::abs(ref_traj_[current_closest_idx_].v) 
-        //             << " | delta_delta: " << ddelta_cur << std::endl;
-
-        // }
 
         // 2. 예측 호라이즌 내 추종 궤적(yref_window) 찾기
         // 내부 버퍼를 사용하여 슬라이딩 윈도우 생성

@@ -109,12 +109,6 @@ int main()
     p[21] = -10000;
     p[22] = -10000;
     p[23] = 0;
-    p[24] = -10000;
-    p[25] = -10000;
-    p[26] = 0;
-    p[27] = -10000;
-    p[28] = -10000;
-    p[29] = 0;
 
     spin_model_acados_sim_update_params(capsule, p, NP);
   

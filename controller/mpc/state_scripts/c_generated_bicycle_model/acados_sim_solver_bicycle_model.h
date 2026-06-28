@@ -37,7 +37,7 @@
 #define BICYCLE_MODEL_NX     5
 #define BICYCLE_MODEL_NZ     0
 #define BICYCLE_MODEL_NU     2
-#define BICYCLE_MODEL_NP     30
+#define BICYCLE_MODEL_NP     24
 
 #ifdef __cplusplus
 extern "C" {
