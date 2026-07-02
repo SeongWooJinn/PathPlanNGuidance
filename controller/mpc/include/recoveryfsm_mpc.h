@@ -8,14 +8,21 @@
 class recoveryFSM
 {
 private:
+    // 1. mpc solver failure
     int recovery_cnt_ = 0;
     int max_recovery_cnt_ = 33;
+
+    // 2. best index update failure
+    int deadlock_cnt_ = 0;
+    int max_deadlock_cnt_for_idx_skip_ = 33;
+    int max_deadlock_cnt_for_replan_ = 99;
+
     double dt_;
     double a_dec_mag_;
     double omega_dot_max_;
 
     // actions
-    inline void decelerateAction(double* current_x, double* current_u) 
+    inline void action_decelerate(double* current_x, double* current_u) 
     {
         // 부드러운 감속 로직
         double current_v = current_x[3];
@@ -43,7 +50,7 @@ private:
         }
 
     }
-    inline void decelerateAngVel_SpinModeAction(double* current_x, double* current_u)
+    inline void action_decelerateAngVel_SpinMode(double* current_x, double* current_u)
     {
         // 각속도 감속 로직
         // current_x[4] -> omega, current_u[1] -> delta omega in spin mode
@@ -66,7 +73,7 @@ private:
             current_x[4] = 0.0;
         }
     }
-    void skipClosestIdxAction(
+    void action_skipClosestIdx(
             int& closest_idx,
             VehicleMode curr_mode, 
             const std::vector<ReferenceTraj>& resampled_traj)
@@ -76,6 +83,7 @@ private:
         if (resampled_traj[next_idx].mode == curr_mode) {
             closest_idx = next_idx; // 같은 모드일 때만 인덱스를 건너뜀
         } else {
+            // 이때 전역경로 재생성 가능
             std::cout << " -> 다음 궤적이 모드 전환점이므로 인덱스 고정, 정지 대기" << std::endl;
         }
     }
@@ -85,11 +93,11 @@ public:
         : max_recovery_cnt_(max_cnt), dt_(dt), a_dec_mag_(a_dec_mag), omega_dot_max_(omega_dot_max)
     {}
 
+    // 1. mpc solver failure
     void resetSolveFailure() {
         if(recovery_cnt_ > 0) 
             recovery_cnt_ = 0;
     }
-
     void executeSolveFailure(double* current_x, double* current_u, int& closest_idx,
                 VehicleMode curr_mode, MpcController& active_mode,
                 const std::vector<ReferenceTraj>& resampled_traj)
@@ -98,7 +106,7 @@ public:
         recovery_cnt_++;
         
         // A. 부드러운 감속 로직
-        decelerateAction(current_x, current_u);
+        action_decelerate(current_x, current_u);
 
         // B. 조향각 유지 or 각속도 감속 로직
         // 1. Bicycle or Parallel mode
@@ -108,7 +116,7 @@ public:
         }
         // 2. Spin mode
         else {
-            decelerateAngVel_SpinModeAction(current_x, current_u);
+            action_decelerateAngVel_SpinMode(current_x, current_u);
         }
 
         // 2. Recovery 상태 머신 (is_action_applied 플래그로 상태 전환 제어)
@@ -120,11 +128,40 @@ public:
         else if(recovery_cnt_ > max_recovery_cnt_) {
             std::cout << "Recovery Step 2: 초기화로도 실패. 타겟 인덱스 강제 스킵" << std::endl;
             // 다음 궤적이 다른 모드라면 스킵 절대 금지!
-            skipClosestIdxAction(closest_idx, curr_mode, resampled_traj);
+            action_skipClosestIdx(closest_idx, curr_mode, resampled_traj);
             resetSolveFailure();
         }
         
     }
+
+    // 2. best index update failure
+    void resetDeadLockSkip() {
+        if (deadlock_cnt_ > 0)
+            deadlock_cnt_ = 0;
+    }
+    void updateDeadLockCnt(int curr_closest_idx, int& prev_closest_idx)
+    {
+        if (curr_closest_idx == prev_closest_idx)
+            deadlock_cnt_++;
+        else {
+            deadlock_cnt_ = 0;
+            prev_closest_idx = curr_closest_idx;
+        }
+    }
+    bool isDeadLock() { return deadlock_cnt_ > max_deadlock_cnt_for_idx_skip_; }
+    bool isDeadLockForReplan() { return deadlock_cnt_ > max_deadlock_cnt_for_replan_;}
+    void executeDeadLockSkip(
+            int& closest_idx,
+            VehicleMode curr_mode, 
+            const std::vector<ReferenceTraj>& resampled_traj) 
+    {
+        std::cerr << "[Warning] Index 업데이트 실패! Dead lock 탈출 FSM 가동" << std::endl;
+        action_skipClosestIdx(closest_idx, curr_mode, resampled_traj);
+        // resetDeadLockSkip();
+        deadlock_cnt_ = max_deadlock_cnt_for_idx_skip_ - 10;
+
+    }
+
 };
 
 

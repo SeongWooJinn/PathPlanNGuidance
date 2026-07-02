@@ -46,7 +46,7 @@ int main() {
     // my_robot.beta = M_PI;     // 180도 회전 [-PI/2, PI/2]  
     my_robot.alpha = 20.0 * M_PI / 180.0;    // parallel mode max alpha, actionset범위 조절 가능 
     my_robot.beta = 20.0 * M_PI / 180.0;     // spin mode max beta, 180도 회전 [-PI/2, PI/2]  
-    my_robot.nsteer = 7;
+    my_robot.nsteer = 5;
 
     // // ROBOT2 : TURTLEBOT3 WAFFLE
     // double WB = 0.14;
@@ -67,7 +67,7 @@ int main() {
     planner_w.use_guide_heuristic = false;    // guide_heuristic or dij_rs_heuristic
 
     // 2. Cost Map Settings
-    planner_w.costmap_type = 0; // 0: Voronoi, 1: Exponential, 2: Sigmoid, 3: Nav2
+    planner_w.costmap_type = 3; // 0: Voronoi, 1: Exponential, 2: Sigmoid, 3: Nav2
     planner_w.nav2_decay_rate = 1.0;      
     planner_w.exp_decay_rate = 1.0;
     planner_w.sig_inflation_w = 1.0;
@@ -75,7 +75,7 @@ int main() {
     // 3. Hybrid A* Search Weights
     planner_w.w_obs = 3.0;// 6.0;
     planner_w.w_fov = 6.0;//6.0
-    planner_w.weighted_a = 1.5;//2.0;
+    planner_w.weighted_a = 1.0;//2.0;
 
     VehicleWeights vehicle_w;
     // 4. Vehicle Kinematics Weights

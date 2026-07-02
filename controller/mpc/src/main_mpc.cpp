@@ -51,7 +51,7 @@ int main()
     double min_dist_thres = 1.5;//15 * v_max * dt;    // 20 * 0.35
     double zero_velocity_thres = std::max(0.01, dt * a_max); //dt * a_dec_mag;
     // 동적 각도 임계값 계산 (마진 1.5배 적용, 최소 0.1 rad 보장)
-    double spin_dtheta_thres = 180 * M_PI / 180.0;//std::max(0.2, omega_max * dt * 1.5);
+    double spin_dtheta_thres = 180 * M_PI / 180.0; //std::max(0.2, omega_max * dt * 1.5); // 
     // 자전거 모드는 최대 속도에서 최대 조향을 꺾었을 때 변하는 각도가 기준
     double bi_dtheta_thres = 180 * M_PI / 180.0; //robotconfig.delta_max; //std::max(0.2, (v_max * std::tan(delta_max) / wheelbase) * dt * 1.5);
 
@@ -98,6 +98,7 @@ int main()
     recoveryFSM fsm(MAX_RECOVERY_CNT, dt, a_dec_mag, omega_dot_max);
     
     VehicleMode prev_mode = resampled_traj[closest_idx].mode;
+    int prev_closest_idx = -1;
 
     // 4. 제어 루프
     while (closest_idx < resampled_traj.size() - 1) {
@@ -122,17 +123,14 @@ int main()
         if (active_mode.isGuidanceFinished(current_x)) break;
         // 현재 루프의 dt만큼 장애물 위치 이동(실제로는 외부 모듈에서 받음)
         updateObstacles(dynamic_obs, dt);
+        // 10m 이내 동적장애물 n개, 2m 이내 정적장애물 (num_obs - n)개
         std::vector<Obstacle> top_k_obs = obsMng.getTopKObstacles(current_x, dynamic_obs, 10.0, 2.0);
-        // 10m 이내에서 가장 위협적인 장애물 n개 추출 (파이썬 세팅 기준)
-        // std::vector<Obstacle> top_k_obs = getTopKDynamicObstacles(current_x, dynamic_obs, 10.0, num_obs);
         // 솔버의 파라미터에 유효 장애물 n개의 좌표 주입
         active_mode.setObstacleParameters(top_k_obs, num_obs, dt);
-        // for (const auto& obs : top_k_obs) {
-        //     if (obs.x > 0 && obs.y > 0)
-        //         std::cout << "obs point : " << obs.x << ", " << obs.y << std::endl;
-        // }
+
         // 1) 각 모드별 인덱스 위치 동기화
         active_mode.setClosestIdx(closest_idx);
+
         // 2) 현재 상태를 솔버에 제약 조건으로 주입
         if (prev_mode != curr_mode) {
             std::cout << "mode switch : " << prev_mode << " -> " << curr_mode << std::endl;
@@ -151,14 +149,19 @@ int main()
         closest_idx = active_mode.updateSlidingWindow(current_x, curr_mode, 
                 min_dist_thres, zero_velocity_thres,
                 bi_dtheta_thres, spin_dtheta_thres);
+        // 인덱스가 업데이트 되었는지 체크
+        fsm.updateDeadLockCnt(closest_idx, prev_closest_idx);
+
         // 4) 최적화 계산
         solve_success = active_mode.solve();
         if (solve_success) {
             // 다음 스텝의 예측 상태를 현재 위치로 누적
             active_mode.getPredictedState(1, current_x);
             active_mode.getControlInput(current_u);
-
             active_mode.printStatus();
+            prev_mode = curr_mode;      // 성공했을때 prev_mode 업데이트
+            // 연산 성공 시 회복 카운터 초기화
+            fsm.resetSolveFailure();
         }
         
         // 5) 최적화 계산 실패시 절차대로 회복기동
@@ -167,12 +170,19 @@ int main()
             // 루프를 종료(break)하지 않고 다음 제어 주기로 넘어감
             continue; 
         } 
-        // else {
-        //     // 연산 성공 시 복구 플래그 초기화
-        //     fsm.reset();
-        // }
-        prev_mode = curr_mode; 
+        // prev_mode = curr_mode; 
         
+        // 6) 인덱스가 업데이트 실패 시, 데드락 탈출을 위한 인덱스 skip
+        if (fsm.isDeadLockForReplan()) {
+            std::cout << "\n[FSM] 완전 고립. Replanning 호출!" << std::endl;
+            fsm.resetDeadLockSkip();
+            continue;
+        }
+        else if (fsm.isDeadLock()) {
+            fsm.executeDeadLockSkip(closest_idx, curr_mode, resampled_traj);
+            continue;
+        }
+
         // realtime_view를 위해 현재 위치와 장애물 저장
         saveCurrentDataToBin(current_x, dynamic_obs, "/tmp/sim_dynamic");
         // 한 스텝 이동할 때마다 현재 상태를 track_path에 기록
