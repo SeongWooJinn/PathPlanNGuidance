@@ -302,6 +302,7 @@ planner_server:
       delta_max: 1.3 #0.52359877559829887307710723054658   # infinity error block PI * 30 / 180
       alpha: 1.5707963267948966192313216916398       # 90도 (라디안), parallel mode
       beta: 1.5707963267948966192313216916398        # 90도 (라디안), spin mode
+      nsteer: 5.0        
       # planner weights
       is_standalone: false
       use_guide_heuristic: false

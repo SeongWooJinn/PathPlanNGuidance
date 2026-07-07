@@ -13,7 +13,7 @@
 #include <visualization_msgs/msg/marker.hpp>
 #include <std_msgs/msg/color_rgba.hpp>
 
-#include "../../Extended_HAStar/include/xhastar.h" 
+#include "xhastar.h" 
 
 namespace extended_planner
 {

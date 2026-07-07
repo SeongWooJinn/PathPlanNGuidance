@@ -37,6 +37,8 @@ ament_target_dependencies(nav2_extended_hastar_plugin
 
 # ament 패키지가 아닌 외부 패키지들의 헤더와 라이브러리는 수동으로 직접 연결
 target_include_directories(nav2_extended_hastar_plugin PUBLIC
+  include
+  ${CMAKE_CURRENT_SOURCE_DIR}/../commons/include
   ${OpenCV_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
   ${OMPL_INCLUDE_DIRS}
