@@ -104,7 +104,9 @@ ament_target_dependencies(${PROJECT_NAME}
 )
 
 # 7. 플러그인 XML 파일 등록 (Nav2에서 플러그인을 찾을 수 있게 해줌)
-pluginlib_export_plugin_description_file(nav2_core nav2_mpc_plugin.xml)
+pluginlib_export_plugin_description_file(nav2_core 
+  local_planner_plugin.xml
+)
 
 # 8. Install 설정 (ROS2 빌드 후 install 폴더로 파일 복사)
 install(TARGETS ${PROJECT_NAME}
@@ -126,13 +128,13 @@ install(FILES
     DESTINATION lib
 )
 
-install(FILES nav2_mpc_plugin.xml
+install(FILES 
+  local_planner_plugin.xml
   DESTINATION share/${PROJECT_NAME}
 )
 
 ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
 ament_export_targets(export_${PROJECT_NAME})
-ament_package()
 
 ament_package()
