@@ -31,7 +31,7 @@ public:
 
     // 플러그인 라이프사이클 관리 함수들
     void configure(
-        const rclcpp_lifecycle::LifecycleNode::WeakPtr & parent,
+        const rclcpp_lifecycle::LifecycleNode::WeakPtr& parent,
         std::string name, std::shared_ptr<tf2_ros::Buffer> tf,
         std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros) override;
 
@@ -45,12 +45,12 @@ public:
 
     // 2. set command
     geometry_msgs::msg::TwistStamped computeVelocityCommands(
-        const geometry_msgs::msg::PoseStamped & pose,
-        const geometry_msgs::msg::Twist & velocity,
-        nav2_core::GoalChecker * goal_checker) override;
+        const geometry_msgs::msg::PoseStamped& pose,
+        const geometry_msgs::msg::Twist& velocity,
+        nav2_core::GoalChecker* goal_checker) override;
 
     // 3. 제한 속도 동적 변경
-    void setSpeedLimit(const double & speed_limit, const bool& percentage) override;
+    void setSpeedLimit(const double& speed_limit, const bool& percentage) override;
 
     // publisher cost map to rviz2
     void customLocalCostmapPublisher(
