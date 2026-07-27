@@ -21,7 +21,6 @@ void MpcController::configure(
     // ------------------ Common vehicle params setting ------------------
     // 플러그인은 독립적인 '노드'가 아니라 Nav2의 planner_server 노드에 기생하는 형태이기 때문에, 
     // configure 함수로 전달받은 **parent (부모 노드의 포인터)**를 사용해서 파라미터를 선언
-
     node_ = parent;
     auto node = node_.lock();
     if(!node) throw std::runtime_error("Unable to lock node");
@@ -100,9 +99,46 @@ void MpcController::deactivate()
 
 // Nav2 필수 오버라이드 인터페이스
 // 1. set Global plan
+// extended_hastar creatPlan 반환값 가져오기
 void MpcController::setPlan(const nav_msgs::msg::Path& _plan)
 {
+    Global_path_ros_ = _plan;
+    Global_path_.clear();
 
+    if (_plan.poses.empty()) return;
+
+    for (size_t i = 0; i < _plan.poses.size(); ++i)
+    {
+        State s;
+        s.x = _plan.poses[i].pose.position.x;
+        s.y = _plan.poses[i].pose.position.y;
+        s.theta = tf2::getYaw(_plan.poses[i].pose.orientation);
+
+        s.steering = 0.0;   // mpc 최적화 계산에서 추론
+
+        // gear
+        if (i < _plan.poses.size() - 1) {
+            double dx = _plan.poses[i+1].pose.position.x - s.x;
+            double dy = _plan.poses[i+1].pose.position.y - s.y;
+            double dir = std::atan2(dy, dx);
+
+            double angle_diff = std::abs(angles::shortest_angular_distance(s.theta, dir));
+            s.gear = (angle_diff > M_PI / 2) ? 1 : 0;
+        }
+        else if (i == _plan.poses.size() - 1) {
+            s.gear = Global_path_.back().gear;
+        }
+        else {
+            s.gear = 0;
+        }
+
+        s.vehicle = VehicleMode::BicycleMode;
+        // 다음 점과 거리 차이가 없고 일정 각도차 이상이면 스핀모드
+
+        Global_path_.push_back(s);
+
+    }
+    RCLCPP_DEBUG(logger_, "Global plan set with %zu points", Global_path_.size());
 }
 
 // 2. set command

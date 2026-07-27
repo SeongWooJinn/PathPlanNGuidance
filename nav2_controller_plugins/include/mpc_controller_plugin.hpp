@@ -69,7 +69,7 @@ private:
     // for nav2 controller cost map
     std::shared_ptr<nav2_costmap_2d::Costmap2DROS> costmap_ros_;
     // The frame of the costmap
-    std::string frame_
+    std::string frame_;
     // plugin name
     std::string name_;
     // parent node weak ptr
@@ -88,12 +88,14 @@ private:
     double a_lat_max_ = 0.2;        // 최대 횡가속도(구심 가속도) 한계 (커브길 감속용)
     double a_dec_mag_ = 3.0;//0.1;  // 최대 감속도 크기 (양수로 입력, 브레이크 성능)
     double a_max_ = 3.0;            // 최대 가속도 크기
-    double dt_ = 2.0 / 60.0;        // MPC 제어 주기 generate_mpc.py -> Tf / N
+    int N_        = 60;
+    double Tf_    = 2.0;
+    double dt_; // = 2.0 / 60.0;        // MPC 제어 주기 generate_mpc.py -> Tf / N
 
     // 로봇 하드웨어 제원 (실제 차량 스펙에 맞게 수정)
     double delta_dot_max_ = 1.5;             // [bicycle] 최대 조향각속도 (rad/s), generate_mpc.py
     double omega_max_ = 0.5;                 // [spin] 제자리 최대 회전 각속도 (rad/s), generate_mpc.py
-    double omega_dot_max_ = delta_dot_max_;  // [spin] 제자리 최대 회전 각가속도 (rad/s2)
+    double omega_dot_max_;  // = delta_dot_max_;  // [spin] 제자리 최대 회전 각가속도 (rad/s2)
 
     // 도착허용범위 설정
     double min_dist_thres_ = 1.5;//15 * v_max * dt;    // 20 * 0.35

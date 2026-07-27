@@ -286,6 +286,7 @@ nav_msgs::msg::Path ExtendedHybridAStarPlanner::createPlan(
 }
 
 /////////// Publishers ///////////
+// Publisher cost map to rviz2 for just visualizing
 void ExtendedHybridAStarPlanner::customCostmapPublisher(
     const GridMap<double>& cost_map, double resolution, double origin_x, double origin_y)
 {
@@ -324,6 +325,7 @@ void ExtendedHybridAStarPlanner::customCostmapPublisher(
     costmap_pub_->publish(std::move(msg));
 }
 
+// Publisher custom path to rviz2 for just visualizing
 void ExtendedHybridAStarPlanner::customPathPublihser(const std::vector<State>& path)
 {
     visualization_msgs::msg::Marker marker;
