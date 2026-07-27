@@ -116,7 +116,7 @@ void MpcController::setPlan(const nav_msgs::msg::Path& _plan)
 
         s.steering = 0.0;   // mpc 최적화 계산에서 추론
 
-        // gear
+        // 1. gear
         if (i < _plan.poses.size() - 1) {
             double dx = _plan.poses[i+1].pose.position.x - s.x;
             double dy = _plan.poses[i+1].pose.position.y - s.y;
@@ -132,12 +132,25 @@ void MpcController::setPlan(const nav_msgs::msg::Path& _plan)
             s.gear = 0;
         }
 
-        s.vehicle = VehicleMode::BicycleMode;
-        // 다음 점과 거리 차이가 없고 일정 각도차 이상이면 스핀모드
-
+        s.vehicle = VehicleMode::BicycleMode;           // default mode
+        // 2. vehicle mode
+        if (i < _plan.poses.size() - 1) {
+            double dx = _plan.poses[i+1].pose.position.x - s.x;
+            double dy = _plan.poses[i+1].pose.position.y - s.y;
+            double next_theta = tf2::getYaw(_plan.poses[i+1].pose.orientation);
+            double dist = std::hypot(dx, dy);
+            double angle_diff = std::abs(angles::shortest_angular_distance(s.theta,next_theta));
+            
+            // 다음 점과 거리 차이가 없고 일정 각도차 이상이면 스핀모드
+            if (dist < 1e-2 && angle_diff > M_PI * 1.0 / 180.0)
+                s.vehicle = VehicleMode::SpinMode;
+            // 다음 점과 각도 차가 거의 없으면 크랩모드
+            else if (angle_diff < 1e-3)
+                s.vehicle = VehicleMode::ParallelMode;
+        }
         Global_path_.push_back(s);
-
     }
+
     RCLCPP_DEBUG(logger_, "Global plan set with %zu points", Global_path_.size());
 }
 
@@ -147,6 +160,8 @@ geometry_msgs::msg::TwistStamped MpcController::computeVelocityCommands(
     const geometry_msgs::msg::Twist& velocity,
     nav2_core::GoalChecker* goal_checker)
 {
+    RCLCPP_INFO(logger_, "=== MPC Controller 함수 진입 성공! ===");
+
 
 }
 
