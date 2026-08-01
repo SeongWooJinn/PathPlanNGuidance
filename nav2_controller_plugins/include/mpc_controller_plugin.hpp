@@ -83,6 +83,12 @@ private:
     std::unique_ptr<BicycleMode> mpc_bi_;
     std::unique_ptr<ParallelMode> mpc_parallel_;
     std::unique_ptr<SpinMode> mpc_spin_;
+    // control variables
+    int prev_idx_ = -1;
+    int closest_idx_ = -1;
+    double prev_steering_ = 0.0;
+    VehicleMode prev_mode_(VehicleMode::BicycleMode);
+    std::unique_ptr<recoveryFSM> fsm_;
 
     // params
     double v_max_ = 0.5;            // 최대 허용 속도 (m/s),generate_mpc의 v limit보다 작게 설정
@@ -105,6 +111,7 @@ private:
     double spin_dtheta_thres_ = 180 * M_PI / 180.0; //std::max(0.2, omega_max * dt * 1.5); // 
     // 자전거 모드는 최대 속도에서 최대 조향을 꺾었을 때 변하는 각도가 기준
     double bi_dtheta_thres_ = 180 * M_PI / 180.0;
+
 };
 
 }// namespace mpc_planner
