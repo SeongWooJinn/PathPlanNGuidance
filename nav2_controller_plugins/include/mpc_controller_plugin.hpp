@@ -13,7 +13,7 @@
 #include <std_msgs/msg/color_rgba.hpp>
 #include "pluginlib/class_list_macros.hpp"
 #include "pluginlib/class_loader.hpp"
-
+#include <angles/angles.h>
 
 #include "vehicles_mpc.h"
 #include "eval_guidance.h"
@@ -78,6 +78,7 @@ private:
     // Global path
     nav_msgs::msg::Path Global_path_ros_;
     std::vector<State> Global_path_;
+    std::vector<ReferenceTraj> resampled_traj_;
     // objects
     std::unique_ptr<BicycleMode> mpc_bi_;
     std::unique_ptr<ParallelMode> mpc_parallel_;

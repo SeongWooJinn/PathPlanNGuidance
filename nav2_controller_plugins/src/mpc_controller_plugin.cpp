@@ -152,6 +152,16 @@ void MpcController::setPlan(const nav_msgs::msg::Path& _plan)
     }
 
     RCLCPP_DEBUG(logger_, "Global plan set with %zu points", Global_path_.size());
+
+    // get resampled reference trajectory
+    if (!mpc_bi.getRefTraj(Global_path_, v_max_, a_lat_max_, a_max_, a_dec_mag_, dt_)) return -1;
+    
+    // 글로벌 궤적 포인터 (각 컨트롤러가 동일한 ref_traj_를 공유)
+    resampled_traj_ = mpc_bi.getRefTrajectoryData();
+    mpc_parallel.setRefTrajectoryData(resampled_traj_);
+    mpc_spin.setRefTrajectoryData(resampled_traj_);
+
+    RCLCPP_INFO(logger_, "=== Complete Reference trajecotory load! ===");
 }
 
 // 2. set command
@@ -162,7 +172,22 @@ geometry_msgs::msg::TwistStamped MpcController::computeVelocityCommands(
 {
     RCLCPP_INFO(logger_, "=== MPC Controller 함수 진입 성공! ===");
 
+    geometry_msgs::msg::TwistStamped cmd_vel;
+    cmd_vel.header.frame_id = pose.header.frame_id;
+    cmd_vel.header.stamp = clock_->now();
 
+    if (Global_path_.empty()) {
+        RCLCPP_INFO(logger_, "=== Global path empty!! ===");
+        cmd_vel.twist.linear.x = 0.0;
+        cmd_vel.twist.angular.z = 0.0;
+        return cmd_vel;
+    }
+
+    double current_x[5] = {
+        pose.pose.x,
+    }
+
+    
 }
 
 // 3. 제한 속도 동적 변경
