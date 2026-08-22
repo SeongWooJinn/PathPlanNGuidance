@@ -1,5 +1,5 @@
 #include "mpc_controller_plugin.hpp"
-
+// #include "planner_exceptions.hpp"
 
 using nav2_util::declare_parameter_if_not_declared;
 
@@ -16,7 +16,7 @@ void MpcController::configure(
     tf_ = tf;
     name_ = name;
     costmap_ros_ = costmap_ros;     // costmap_ros_ : 2D Lidar sensor raw data in Nav2
-    global_frame_ = costmap_ros_->getGlobalFrameID();
+    frame_ = costmap_ros_->getGlobalFrameID();
 
     // ------------------ Common vehicle params setting ------------------
     // 플러그인은 독립적인 '노드'가 아니라 Nav2의 planner_server 노드에 기생하는 형태이기 때문에, 
@@ -86,7 +86,7 @@ void MpcController::cleanup()
 {
     RCLCPP_INFO(logger_, "Cleaning up...");
     // memory clean
-    mpc_bi.reset();
+    mpc_bi_.reset();
     mpc_parallel_.reset();
     mpc_spin_.reset();
 }
@@ -158,16 +158,16 @@ void MpcController::setPlan(const nav_msgs::msg::Path& _plan)
     RCLCPP_DEBUG(logger_, "Global plan set with %zu points", Global_path_.size());
 
     // get resampled reference trajectory
-    if (!mpc_bi.getRefTraj(Global_path_, v_max_, a_lat_max_, a_max_, a_dec_mag_, dt_)) return -1;
+    if (!mpc_bi_->getRefTraj(Global_path_, v_max_, a_lat_max_, a_max_, a_dec_mag_, dt_)) return;
     
     // 글로벌 궤적 포인터 (각 컨트롤러가 동일한 ref_traj_를 공유)
-    resampled_traj_ = mpc_bi.getRefTrajectoryData();
-    mpc_parallel.setRefTrajectoryData(resampled_traj_);
-    mpc_spin.setRefTrajectoryData(resampled_traj_);
+    resampled_traj_ = mpc_bi_->getRefTrajectoryData();
+    mpc_parallel_->setRefTrajectoryData(resampled_traj_);
+    mpc_spin_->setRefTrajectoryData(resampled_traj_);
 
     RCLCPP_INFO(logger_, "=== Complete Reference trajecotory load! ===");
 
-    prev_idx     = -1;
+    prev_idx_     = -1;
     closest_idx_ = 0;
     prev_mode_   = resampled_traj_[closest_idx_].mode;
 }
@@ -227,7 +227,7 @@ geometry_msgs::msg::TwistStamped MpcController::computeVelocityCommands(
     RCLCPP_INFO(logger_, "=== MPC Controller 제어 명령 생성 시작! ===");
 
     // 람다식으로 즉시 포인터에 할당
-    auto& active_mode = [&](VehicleMode mode) -> auto& {
+    ::MpcController& active_mode = [&](VehicleMode mode) -> ::MpcController& {
         if (mode == VehicleMode::BicycleMode) return *mpc_bi_;
         else if (mode == VehicleMode::ParallelMode) return *mpc_parallel_;
         else return *mpc_spin_;
@@ -273,7 +273,7 @@ geometry_msgs::msg::TwistStamped MpcController::computeVelocityCommands(
         active_mode.getPredictedState(1, current_x);
         active_mode.getControlInput(current_u);
         active_mode.printStatus();
-        prev_mode = current_mode;      // 성공했을때 prev_mode 업데이트
+        prev_mode_ = current_mode;      // 성공했을때 prev_mode 업데이트
         prev_steering_ = current_x[4];
         // 연산 성공 시 회복 카운터 초기화
         fsm_->resetSolveFailure();
@@ -298,7 +298,7 @@ geometry_msgs::msg::TwistStamped MpcController::computeVelocityCommands(
     if (fsm_->isDeadLockForReplan()) {
         RCLCPP_ERROR(logger_, "[FSM] 완전 고립. 전역경로계획 재생성 호출!");
         fsm_->resetDeadLockSkip();
-        throw nav2_core::PlannerException("Deadlock detected, trigger global replanning");
+        // throw nav2_core::PlannerException("Deadlock detected, trigger global replanning");
     }
     else if (fsm_->isDeadLock()) {
         fsm_->executeDeadLockSkip(closest_idx_, current_mode, resampled_traj_);
@@ -314,11 +314,11 @@ geometry_msgs::msg::TwistStamped MpcController::computeVelocityCommands(
 // 3. 제한 속도 동적 변경
 void MpcController::setSpeedLimit(const double& speed_limit, const bool& percentage)
 {
-    // speed_limit이 0.0 근처로 들어오거나 특정 상수(NO_SPEED_LIMIT)로 들어오면 속도 제한 해제
-    if (speed_limit == 0.0 || speed_limit == nav2_costmap_2d::NO_SPEED_LIMIT) {
-        v_max_ = v_max_;
-    }
-    else if (percentage) {
+    // // speed_limit이 0.0 근처로 들어오거나 특정 상수(NO_SPEED_LIMIT)로 들어오면 속도 제한 해제
+    // if (speed_limit == 0.0 || speed_limit == nav2_costmap_2d::NO_SPEED_LIMIT) {
+    //     v_max_ = v_max_;
+    // }
+    if (percentage) {
         // 퍼센티지 제한 (예: 50.0 이면 원래 속도의 절반인 0.25 m/s)
         v_max_ *= (speed_limit / 100.0);
     }

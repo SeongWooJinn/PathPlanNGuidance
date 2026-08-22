@@ -7,6 +7,9 @@
 #include "rclcpp/rclcpp.hpp"
 #include "nav_msgs/msg/path.hpp"
 #include "nav2_core/controller.hpp"
+#include "nav2_util/lifecycle_node.hpp"
+#include "nav2_util/node_utils.hpp"
+#include "nav2_costmap_2d/costmap_filters/filter_values.hpp"
 #include "geometry_msgs/msg/pose_stamped.hpp"
 #include "geometry_msgs/msg/twist_stamped.hpp"
 #include <visualization_msgs/msg/marker.hpp>
@@ -87,7 +90,7 @@ private:
     int prev_idx_ = -1;
     int closest_idx_ = -1;
     double prev_steering_ = 0.0;
-    VehicleMode prev_mode_(VehicleMode::BicycleMode);
+    VehicleMode prev_mode_ = VehicleMode::BicycleMode;
     std::unique_ptr<recoveryFSM> fsm_;
 
     // params

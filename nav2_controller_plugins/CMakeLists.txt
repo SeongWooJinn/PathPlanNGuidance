@@ -26,8 +26,8 @@ find_package(rclcpp_lifecycle REQUIRED)
 find_package(ament_cmake REQUIRED) 
 find_package(OpenCV REQUIRED)
 
-set(CONTROLLER_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../controller)
-set(COMMONS_LIB ${CMAKE_CURRENT_SOURCE_DIR}/../commons)
+set(CONTROLLER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../controller)
+set(COMMONS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../commons)
 
 # acados 설치 경로 (사용자 환경에 맞게 유지)
 set(ACADOS_DIR "/home/uj/acados")
@@ -61,9 +61,8 @@ add_library(${PROJECT_NAME} SHARED
 )
 
 # 5. 헤더 파일(Include) 경로 통합
-target_include_directories(${PROJECT_NAME} PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<INSTALL_INTERFACE:include>
+target_include_directories(${PROJECT_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CONTROLLER_DIR}
     ${CONTROLLER_DIR}/mpc/include
     ${CONTROLLER_DIR}/mpc/state_scripts/c_generated_bicycle_model
@@ -78,8 +77,9 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${OpenCV_INCLUDE_DIRS}
 )
 
+
 # 6. 라이브러리 링크 (Acados + OpenCV + ROS2)
-target_link_libraries(${PROJECT_NAME} PUBLIC
+target_link_libraries(${PROJECT_NAME} 
     acados         
     hpipm          
     blasfeo        
@@ -133,8 +133,8 @@ install(FILES
   DESTINATION share/${PROJECT_NAME}
 )
 
-ament_export_include_directories(include)
-ament_export_libraries(${PROJECT_NAME})
-ament_export_targets(export_${PROJECT_NAME})
+# ament_export_include_directories(include)
+# ament_export_libraries(${PROJECT_NAME})
+# ament_export_targets(export_${PROJECT_NAME})
 
 ament_package()
