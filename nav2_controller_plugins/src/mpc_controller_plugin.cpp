@@ -106,6 +106,9 @@ void MpcController::deactivate()
 // extended_hastar creatPlan 반환값 가져오기
 void MpcController::setPlan(const nav_msgs::msg::Path& _plan)
 {
+    RCLCPP_INFO(logger_, "=== setPlan 함수 진입 성공! ===");
+    RCLCPP_INFO(logger_, "Received plan with %zu poses", _plan.poses.size());
+    
     Global_path_ros_ = _plan;
     Global_path_.clear();
 
@@ -155,7 +158,6 @@ void MpcController::setPlan(const nav_msgs::msg::Path& _plan)
         Global_path_.push_back(s);
     }
 
-    RCLCPP_DEBUG(logger_, "Global plan set with %zu points", Global_path_.size());
 
     // get resampled reference trajectory
     if (!mpc_bi_->getRefTraj(Global_path_, v_max_, a_lat_max_, a_max_, a_dec_mag_, dt_)) return;
@@ -165,7 +167,8 @@ void MpcController::setPlan(const nav_msgs::msg::Path& _plan)
     mpc_parallel_->setRefTrajectoryData(resampled_traj_);
     mpc_spin_->setRefTrajectoryData(resampled_traj_);
 
-    RCLCPP_INFO(logger_, "=== Complete Reference trajecotory load! ===");
+    RCLCPP_INFO(logger_, "Refernece plan set with %zu points", resampled_traj_.size());
+    RCLCPP_INFO(logger_, "=== Complete Reference trajectory load! ===");
 
     prev_idx_     = -1;
     closest_idx_ = 0;
@@ -178,7 +181,7 @@ geometry_msgs::msg::TwistStamped MpcController::computeVelocityCommands(
     const geometry_msgs::msg::Twist& velocity,
     nav2_core::GoalChecker* goal_checker)
 {
-    RCLCPP_INFO(logger_, "=== MPC Controller 함수 진입 성공! ===");
+    // RCLCPP_INFO(logger_, "=== MPC Controller 함수 진입 성공! ===");
 
     geometry_msgs::msg::TwistStamped cmd_vel;
     cmd_vel.header.frame_id = pose.header.frame_id;
@@ -192,6 +195,10 @@ geometry_msgs::msg::TwistStamped MpcController::computeVelocityCommands(
     }
 
     double current_v = velocity.linear.x;
+    if (std::abs(current_v) < 0.05 && std::abs(prev_opt_v_) > 0.01) {
+        current_v = prev_opt_v_;
+    }
+
     double current_w = velocity.angular.z;
 
     // gear 추정
@@ -224,7 +231,7 @@ geometry_msgs::msg::TwistStamped MpcController::computeVelocityCommands(
     //////////////////////////////////////
     ///////// start run guidance /////////
     //////////////////////////////////////
-    RCLCPP_INFO(logger_, "=== MPC Controller 제어 명령 생성 시작! ===");
+    // RCLCPP_INFO(logger_, "=== MPC Controller 제어 명령 생성 시작! ===");
 
     // 람다식으로 즉시 포인터에 할당
     ::MpcController& active_mode = [&](VehicleMode mode) -> ::MpcController& {
@@ -269,16 +276,59 @@ geometry_msgs::msg::TwistStamped MpcController::computeVelocityCommands(
     // 4) 최적화 계산
     solve_success = active_mode.solve();
     if (solve_success) {
+        RCLCPP_INFO(logger_, "[Solve Success]!!!");
         // 다음 스텝의 예측 상태를 현재 위치로 누적
         active_mode.getPredictedState(1, current_x);
         active_mode.getControlInput(current_u);
-        active_mode.printStatus();
+        // active_mode.printStatus();
         prev_mode_ = current_mode;      // 성공했을때 prev_mode 업데이트
         prev_steering_ = current_x[4];
         // 연산 성공 시 회복 카운터 초기화
         fsm_->resetSolveFailure();
-        cmd_vel.twist.linear.x = current_u[0];
-        cmd_vel.twist.angular.z = current_u[1];
+
+        // cmd_vel.twist.linear.x = current_u[0];
+        // cmd_vel.twist.angular.z = current_u[1];
+        // =========================================================================
+        // [가속도/각가속도(current_u)를 선속도/각속도(cmd_vel)로 변환]
+        // =========================================================================
+        double opt_v = 0.0;
+        double opt_w = 0.0;
+
+        // 1) 목표 선속도 (현재속도 + a * dt)
+        double next_v = current_x[3];
+        // 2) 목표 조향각 (현재조향각 + delta_dot * dt)
+        double next_steering = current_x[4];
+
+        // 3) 기어 반영 (후진 경로일 경우 음수 속도로 변경)
+        // if (resampled_traj_[closest_idx_].gear == 1) {
+        //     next_v = -std::abs(next_v);
+        // }
+        opt_v = next_v;
+
+        // 4) 로봇 기구학 변환 (조향각 -> 회전각속도 w)
+        // L: 차량의 축간거리(Wheelbase), 터틀봇/자체 로봇에 맞게 조정 (예: 0.2m)
+        double wheelbase = 0.11; 
+        if (current_mode == VehicleMode::BicycleMode || current_mode == VehicleMode::ParallelMode) {
+            if (std::abs(opt_v) > 0.001) {
+                opt_w = (opt_v * std::tan(next_steering)) / wheelbase;
+            } else {
+                opt_w = 0.0;
+            }
+        } else { // Spin Mode
+            opt_w = next_steering; // Spin 모드는 조향각 대신 각속도를 직접 제어
+        }
+
+        prev_steering_ = next_steering;
+        prev_idx_ = closest_idx_; // [수정: 데드락 카운터용 직전 인덱스 갱신]
+        prev_opt_v_ = opt_v; // [추가] 다음 주기를 위해 이번에 도출된 최적 속도 저장    
+
+        cmd_vel.twist.linear.x = opt_v;
+        cmd_vel.twist.angular.z = opt_w;
+
+        RCLCPP_INFO(logger_, "[MPC Result] X: %.3f, Y: %.3f, Th: %.3f, V: %.3f, Del: %.3f | a: %.3f, d_dot: %.3f", 
+            current_x[0], current_x[1], current_x[2], current_x[3], current_x[4],
+            current_u[0], current_u[1]);
+        RCLCPP_INFO(logger_, "Cmd_vel v : %.3f, w : %.3f", cmd_vel.twist.linear.x, cmd_vel.twist.angular.z);
         return cmd_vel;
     }
     
@@ -309,6 +359,10 @@ geometry_msgs::msg::TwistStamped MpcController::computeVelocityCommands(
         prev_steering_ = current_x[4];
         return cmd_vel;
     }
+
+    // [모든 분기 후 기본 반환]
+    prev_idx_ = closest_idx_;
+    return cmd_vel;
 }
 
 // 3. 제한 속도 동적 변경

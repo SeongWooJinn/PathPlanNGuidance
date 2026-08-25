@@ -87,6 +87,7 @@ private:
     std::unique_ptr<ParallelMode> mpc_parallel_;
     std::unique_ptr<SpinMode> mpc_spin_;
     // control variables
+    double prev_opt_v_ = 0.0; // Odom 지연 극복을 위한 이전 명령 속도 기억
     int prev_idx_ = -1;
     int closest_idx_ = -1;
     double prev_steering_ = 0.0;

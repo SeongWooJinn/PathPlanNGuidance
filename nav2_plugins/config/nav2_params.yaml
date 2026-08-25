@@ -97,18 +97,22 @@ controller_server:
       yaw_goal_tolerance: 0.25
     FollowPath:
       plugin: "mpc_planner::MpcController"
-      v_max_: 0.5
+      # --- TurtleBot3 Waffle 물리적 스펙 ---
+      v_max_: 0.26             # Waffle 최대 속도
+      a_max_: 2.5              # 초반에 강한 토크로 늪을 탈출할 수 있도록 가속도 제한 상향
+      a_dec_mag_: 2.5
       a_lat_max_: 0.2
-      a_dec_mag_: 3.0
-      a_max_: 3.0
+      # --- MPC 솔버 호라이즌 ---
       N_: 60
-      Tf_: 2.0
-      delta_dot_max_: 1.5
-      omega_max_: 0.5
-      min_dist_thres_: 1.5
-      zero_velocity_thres_: 0.2
-      spin_dtheta_thres_: 3.1415926535
-      bi_dtheta_thres_: 3.1415926535
+      Tf_: 2.0                 # dt = 0.033s
+      # --- 조향 및 회전(Spin) 스펙 ---
+      delta_dot_max_: 2.0
+      omega_max_: 1.82         # Waffle 공식 최대 각속도
+      # --- 도착 및 인덱스 전환 임계값 ---
+      min_dist_thres_: 0.15    # Waffle의 이동 단위를 고려한 적절한 거리
+      zero_velocity_thres_: 0.1
+      spin_dtheta_thres_: 0.15
+      bi_dtheta_thres_: 0.15
       # plugin: "nav2_mppi_controller::MPPIController"
       # time_steps: 56
       # model_dt: 0.05
