@@ -16,10 +16,10 @@ enum class VehicleMode : int
 {
     // 무조건 0부터 시작
     BicycleMode = 0,
-    // SpinMode = 1,
-    // ParallelMode = 2,
-    ParallelMode = 1,
-    SpinMode = 2,
+    SpinMode = 1,
+    ParallelMode = 2,
+    // ParallelMode = 1,
+    // SpinMode = 2,
     COUNT       // 단지 enum class 요소 개수를 파악하기 위한 요소
 };
 

@@ -82,12 +82,22 @@ private:
     nav_msgs::msg::Path Global_path_ros_;
     std::vector<State> Global_path_;
     std::vector<ReferenceTraj> resampled_traj_;
+    // 261011 수정: 제한 해제 시 원래 속도 프로파일을 복원한다.
+    std::vector<ReferenceTraj> unlimited_traj_;
     // objects
     std::unique_ptr<BicycleMode> mpc_bi_;
     std::unique_ptr<ParallelMode> mpc_parallel_;
     std::unique_ptr<SpinMode> mpc_spin_;
     // control variables
     double prev_opt_v_ = 0.0; // Odom 지연 극복을 위한 이전 명령 속도 기억
+    // 261011 수정: 기준 속도와 실제 측정값을 분리하고 새 경로의 최근접점 초기화를 예약한다.
+    double configured_v_max_ = 0.26;
+    double measured_v_ = 0.0;
+    bool initialize_plan_index_ = true;
+    bool final_rotation_ = false;
+    int solve_failure_count_ = 0;
+    void checkCommandCollision(const geometry_msgs::msg::PoseStamped & pose,
+        const geometry_msgs::msg::Twist & command);
     int prev_idx_ = -1;
     int closest_idx_ = -1;
     double prev_steering_ = 0.0;
@@ -95,26 +105,26 @@ private:
     std::unique_ptr<recoveryFSM> fsm_;
 
     // params
-    double v_max_ = 0.5;            // 최대 허용 속도 (m/s),generate_mpc의 v limit보다 작게 설정
-    double a_lat_max_ = 0.2;        // 최대 횡가속도(구심 가속도) 한계 (커브길 감속용)
-    double a_dec_mag_ = 3.0;//0.1;  // 최대 감속도 크기 (양수로 입력, 브레이크 성능)
-    double a_max_ = 3.0;            // 최대 가속도 크기
-    int N_        = 60;
-    double Tf_    = 2.0;
+    double v_max_;            // 최대 허용 속도 (m/s),generate_mpc의 v limit보다 작게 설정
+    double a_lat_max_;        // 최대 횡가속도(구심 가속도) 한계 (커브길 감속용)
+    double a_dec_mag_;//0.1;  // 최대 감속도 크기 (양수로 입력, 브레이크 성능)
+    double a_max_;            // 최대 가속도 크기
+    int N_;
+    double Tf_;
     double dt_; // = 2.0 / 60.0;        // MPC 제어 주기 generate_mpc.py -> Tf / N
 
     // 로봇 하드웨어 제원 (실제 차량 스펙에 맞게 수정)
-    double delta_dot_max_ = 1.5;             // [bicycle] 최대 조향각속도 (rad/s), generate_mpc.py
-    double omega_max_ = 0.5;                 // [spin] 제자리 최대 회전 각속도 (rad/s), generate_mpc.py
+    double delta_dot_max_;             // [bicycle] 최대 조향각속도 (rad/s), generate_mpc.py
+    double omega_max_;                 // [spin] 제자리 최대 회전 각속도 (rad/s), generate_mpc.py
     double omega_dot_max_;  // = delta_dot_max_;  // [spin] 제자리 최대 회전 각가속도 (rad/s2)
 
     // 도착허용범위 설정
-    double min_dist_thres_ = 1.5;//15 * v_max * dt;    // 20 * 0.35
-    double zero_velocity_thres_ = 0.2; //std::max(0.01, dt * a_max); 
+    double min_dist_thres_;//15 * v_max * dt;    // 20 * 0.35
+    double zero_velocity_thres_; //std::max(0.01, dt * a_max); 
     // 동적 각도 임계값 계산 (마진 1.5배 적용, 최소 0.1 rad 보장)
-    double spin_dtheta_thres_ = 180 * M_PI / 180.0; //std::max(0.2, omega_max * dt * 1.5); // 
+    double spin_dtheta_thres_; //std::max(0.2, omega_max * dt * 1.5); // 
     // 자전거 모드는 최대 속도에서 최대 조향을 꺾었을 때 변하는 각도가 기준
-    double bi_dtheta_thres_ = 180 * M_PI / 180.0;
+    double bi_dtheta_thres_;
 
 };
 

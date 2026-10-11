@@ -1,4 +1,10 @@
 #include "mpc_controller_plugin.hpp"
+// 260905 추가: 경로 좌표계 검사와 로봇 자세 TF 변환 공통 함수.
+#include "path_frame_utils.hpp"
+// 261011 수정: 기존 local_costmap의 footprint 충돌 검사와 목표 허용오차를 사용한다.
+#include "nav2_costmap_2d/footprint_collision_checker.hpp"
+#include "nav2_core/goal_checker.hpp"
+#include <mutex>
 // #include "planner_exceptions.hpp"
 
 using nav2_util::declare_parameter_if_not_declared;
@@ -30,8 +36,10 @@ void MpcController::configure(
 
     RCLCPP_INFO(logger_, "Configured plugin %s", name_.c_str());
 
-    declare_parameter_if_not_declared(node, name_ + ".v_max", rclcpp::ParameterValue(0.5));
-    v_max_ = node->get_parameter(name_ + ".v_max").as_double();
+    declare_parameter_if_not_declared(node, name_ + ".v_max_", rclcpp::ParameterValue(0.5));
+    v_max_ = node->get_parameter(name_ + ".v_max_").as_double();
+    // 261011 수정: 백분율 속도 제한은 고정된 기본 속도에 적용한다.
+    configured_v_max_ = v_max_;
 
     declare_parameter_if_not_declared(node, name_ + ".a_lat_max_", rclcpp::ParameterValue(0.2));
     a_lat_max_ = node->get_parameter(name_ + ".a_lat_max_").as_double();
@@ -48,6 +56,10 @@ void MpcController::configure(
     declare_parameter_if_not_declared(node, name_ + ".Tf_", rclcpp::ParameterValue(2.0));
     Tf_ = node->get_parameter(name_ + ".Tf_").as_double();
     dt_ = Tf_ / N_;
+    // 261011 수정: YAML만 바꿔 생성된 acados 솔버와 다른 시간축을 쓰는 설정을 거부한다.
+    if (N_ != BICYCLE_MODEL_N || std::abs(Tf_ - 2.0) > 1e-6 || v_max_ <= 0.0) {
+        throw std::runtime_error("MPC requires generated N=60, Tf=2.0 and positive v_max_");
+    }
 
     declare_parameter_if_not_declared(node, name_ + ".delta_dot_max_", rclcpp::ParameterValue(1.5));
     delta_dot_max_ = node->get_parameter(name_ + ".delta_dot_max_").as_double();
@@ -73,9 +85,12 @@ void MpcController::configure(
     mpc_parallel_ = std::make_unique<ParallelMode>();
     mpc_spin_ = std::make_unique<SpinMode>();
 
-    if (!mpc_bi_->initialize()) RCLCPP_ERROR(logger_, "Bicycle MPC Init Failed");
-    if (!mpc_parallel_->initialize()) RCLCPP_ERROR(logger_, "Parallel MPC Init Failed");
-    if (!mpc_spin_->initialize()) RCLCPP_ERROR(logger_, "Spin MPC Init Failed");
+    // 261011 수정: 솔버 초기화 실패를 숨기지 않고 lifecycle 구성 실패로 전달한다.
+    if (!mpc_bi_->initialize() || !mpc_parallel_->initialize() || !mpc_spin_->initialize()) {
+        throw std::runtime_error("MPC solver initialization failed");
+    }
+    // 261011 수정: 기존 생성 솔버를 재생성하지 않고 실행 시 경로 위치 추종 비용을 보정한다.
+    mpc_bi_->configureTrackingWeights();
 
     int recovery_cnt = 0;
     int MAX_RECOVERY_CNT = 30;
@@ -108,11 +123,27 @@ void MpcController::setPlan(const nav_msgs::msg::Path& _plan)
 {
     RCLCPP_INFO(logger_, "=== setPlan 함수 진입 성공! ===");
     RCLCPP_INFO(logger_, "Received plan with %zu poses", _plan.poses.size());
+
+    // 260905 추가: 새 경로를 저장하기 전에 frame_id와 개별 pose의 좌표계 일관성을 확인한다.
+    if (!_plan.poses.empty()) {
+        validatePathFrame(_plan);
+    }
     
+    // 261011 수정: 같은 목표의 재계획은 최종 정렬 상태를 유지하고 새 목표에서는 해제한다.
+    if (!Global_path_ros_.poses.empty() && !_plan.poses.empty()) {
+        const auto & old_goal = Global_path_ros_.poses.back().pose;
+        const auto & new_goal = _plan.poses.back().pose;
+        if (std::hypot(old_goal.position.x - new_goal.position.x,
+            old_goal.position.y - new_goal.position.y) > 1e-3 ||
+            std::abs(angles::shortest_angular_distance(tf2::getYaw(old_goal.orientation),
+                tf2::getYaw(new_goal.orientation))) > 1e-3) final_rotation_ = false;
+    }
     Global_path_ros_ = _plan;
     Global_path_.clear();
 
-    if (_plan.poses.empty()) return;
+    // 261011 수정: 실패한 새 경로가 이전 참조 궤적을 재사용하지 않도록 초기화한다.
+    resampled_traj_.clear();
+    if (_plan.poses.empty()) throw nav2_core::InvalidPath("MPC received an empty path");
 
     for (size_t i = 0; i < _plan.poses.size(); ++i)
     {
@@ -130,10 +161,14 @@ void MpcController::setPlan(const nav_msgs::msg::Path& _plan)
             double dir = std::atan2(dy, dx);
 
             double angle_diff = std::abs(angles::shortest_angular_distance(s.theta, dir));
-            s.gear = (angle_diff > M_PI / 2) ? 1 : 0;
+            // 261011 수정: 제자리 회전은 이동 방향이 없으므로 이전 기어를 상속한다.
+            s.gear = std::hypot(dx, dy) < 1e-6 ?
+                (Global_path_.empty() ? 0 : Global_path_.back().gear) :
+                ((angle_diff > M_PI / 2) ? 1 : 0);
         }
         else if (i == _plan.poses.size() - 1) {
-            s.gear = Global_path_.back().gear;
+            // 261011 수정: 한 점짜리 경로에서도 빈 벡터 back()을 호출하지 않는다.
+            s.gear = Global_path_.empty() ? 0 : Global_path_.back().gear;
         }
         else {
             s.gear = 0;
@@ -147,23 +182,37 @@ void MpcController::setPlan(const nav_msgs::msg::Path& _plan)
             double next_theta = tf2::getYaw(_plan.poses[i+1].pose.orientation);
             double dist = std::hypot(dx, dy);
             double angle_diff = std::abs(angles::shortest_angular_distance(s.theta,next_theta));
+            // 261011 수정: 경로 곡률과 전후진 부호에서 Bicycle의 참조 조향각을 계산한다.
+            if (dist > 1e-5) {
+                const double signed_distance = (s.gear == 1 ? -dist : dist);
+                s.steering = std::clamp(std::atan(0.11 *
+                    angles::shortest_angular_distance(s.theta, next_theta) / signed_distance), -0.7, 0.7);
+            }
             
             // 다음 점과 거리 차이가 없고 일정 각도차 이상이면 스핀모드
             if (dist < 1e-2 && angle_diff > M_PI * 1.0 / 180.0)
                 s.vehicle = VehicleMode::SpinMode;
             // 다음 점과 각도 차가 거의 없으면 크랩모드
-            else if (angle_diff < 1e-3)
-                s.vehicle = VehicleMode::ParallelMode;
+            // 261011 수정: Waffle의 직선 전진·후진도 BicycleMode이며 크랩으로 재분류하지 않는다.
         }
         Global_path_.push_back(s);
     }
 
 
     // get resampled reference trajectory
-    if (!mpc_bi_->getRefTraj(Global_path_, v_max_, a_lat_max_, a_max_, a_dec_mag_, dt_)) return;
+    // 261011 수정: 재계획 궤적은 직전 명령이 아닌 측정 속도로 시작한다.
+    mpc_bi_->setInitialReferenceSpeed(measured_v_);
+    // 261011 수정: 제한 중 재계획해도 원래 속도 프로파일을 보존하여 제한 해제가 정상 동작한다.
+    if (!mpc_bi_->getRefTraj(Global_path_, configured_v_max_, a_lat_max_, a_max_, a_dec_mag_, dt_)) {
+        Global_path_.clear();
+        throw nav2_core::InvalidPath("MPC reference trajectory generation failed");
+    }
     
     // 글로벌 궤적 포인터 (각 컨트롤러가 동일한 ref_traj_를 공유)
     resampled_traj_ = mpc_bi_->getRefTrajectoryData();
+    unlimited_traj_ = resampled_traj_;  // 261011 수정: 동적 제한 이전 프로파일 보존.
+    for (auto & point : resampled_traj_) point.v = std::clamp(point.v, -v_max_, v_max_);
+    mpc_bi_->setRefTrajectoryData(resampled_traj_);  // 261011 수정: 새 경로에도 현재 제한을 적용한다.
     mpc_parallel_->setRefTrajectoryData(resampled_traj_);
     mpc_spin_->setRefTrajectoryData(resampled_traj_);
 
@@ -172,216 +221,174 @@ void MpcController::setPlan(const nav_msgs::msg::Path& _plan)
 
     prev_idx_     = -1;
     closest_idx_ = 0;
-    prev_mode_   = resampled_traj_[closest_idx_].mode;
+    // 261011 수정: 실제 직전 모드는 재계획으로 덮어쓰지 않아 정지 전 전환을 감지한다.
+    // 261011 수정: 새 경로의 초기 인덱스는 다음 제어 주기의 실제 자세에서 결정한다.
+    initialize_plan_index_ = true;
+    solve_failure_count_ = 0;
+    fsm_->resetDeadLockSkip();
 }
 
 // 2. set command
+// 261011 수정: 측정 상태를 사용하며 모드 전환·목표 정렬·실패 복구를 반환 전에 처리한다.
 geometry_msgs::msg::TwistStamped MpcController::computeVelocityCommands(
     const geometry_msgs::msg::PoseStamped& pose,
     const geometry_msgs::msg::Twist& velocity,
     nav2_core::GoalChecker* goal_checker)
 {
-    // RCLCPP_INFO(logger_, "=== MPC Controller 함수 진입 성공! ===");
-
-    geometry_msgs::msg::TwistStamped cmd_vel;
-    cmd_vel.header.frame_id = pose.header.frame_id;
-    cmd_vel.header.stamp = clock_->now();
-
-    if (Global_path_.empty()) {
-        RCLCPP_INFO(logger_, "=== Global path empty!! ===");
-        cmd_vel.twist.linear.x = 0.0;
-        cmd_vel.twist.angular.z = 0.0;
-        return cmd_vel;
+    geometry_msgs::msg::TwistStamped command;
+    command.header.frame_id = costmap_ros_->getBaseFrameID();
+    command.header.stamp = clock_->now();
+    measured_v_ = velocity.linear.x;
+    if (resampled_traj_.empty() || Global_path_ros_.poses.empty()) {
+        throw nav2_core::InvalidPath("MPC has no valid reference trajectory");
     }
-
-    double current_v = velocity.linear.x;
-    if (std::abs(current_v) < 0.05 && std::abs(prev_opt_v_) > 0.01) {
-        current_v = prev_opt_v_;
+    // 261011 수정: 이전 TF 보정과 timestamp 보존을 유지한다.
+    const auto tracking = transformPoseToPathFrame(
+        pose, Global_path_ros_.header.frame_id, *tf_,
+        tf2::durationFromSec(costmap_ros_->getTransformTolerance()));
+    double yaw = tf2::getYaw(tracking.pose.orientation);
+    // 261011 수정: yaw를 참조와 같은 2pi 구간으로 맞춰 경계에서 큰 오차를 막는다.
+    yaw = resampled_traj_[std::max(0, closest_idx_)].theta +
+        angles::shortest_angular_distance(resampled_traj_[std::max(0, closest_idx_)].theta, yaw);
+    const auto & goal = Global_path_ros_.poses.back().pose;
+    const double distance = std::hypot(goal.position.x - tracking.pose.position.x,
+        goal.position.y - tracking.pose.position.y);
+    const double yaw_error = angles::shortest_angular_distance(yaw, tf2::getYaw(goal.orientation));
+    double xy_tolerance = 0.25, yaw_tolerance = 0.25;
+    geometry_msgs::msg::Pose pose_tolerance;
+    geometry_msgs::msg::Twist velocity_tolerance;
+    if (goal_checker && goal_checker->getTolerances(pose_tolerance, velocity_tolerance)) {
+        if (pose_tolerance.position.x > 0.0) xy_tolerance = pose_tolerance.position.x;
+        yaw_tolerance = std::abs(tf2::getYaw(pose_tolerance.orientation));
     }
-
-    double current_w = velocity.angular.z;
-
-    // gear 추정
-    int current_gear = (current_v < -0.01) ? 1 : 0; 
-    // 조향각(Steering) 추정
-    double current_steering = prev_steering_;
-
-    VehicleMode current_mode = resampled_traj_[closest_idx_].mode;
-
-    double current_x[5] = {
-        pose.pose.position.x,
-        pose.pose.position.y,
-        tf2::getYaw(pose.pose.orientation),
-        current_v,
-        current_steering
-    };
-    double current_u[2] {
-        current_v,
-        current_w
-    };
-
-    State curr_state;
-    curr_state.x = current_x[0];
-    curr_state.y = current_x[1];
-    curr_state.theta = current_x[2];
-    curr_state.gear = current_gear;
-    curr_state.steering = current_x[4];
-    curr_state.vehicle = current_mode; 
-
-    //////////////////////////////////////
-    ///////// start run guidance /////////
-    //////////////////////////////////////
-    // RCLCPP_INFO(logger_, "=== MPC Controller 제어 명령 생성 시작! ===");
-
-    // 람다식으로 즉시 포인터에 할당
-    ::MpcController& active_mode = [&](VehicleMode mode) -> ::MpcController& {
-        if (mode == VehicleMode::BicycleMode) return *mpc_bi_;
-        else if (mode == VehicleMode::ParallelMode) return *mpc_parallel_;
-        else return *mpc_spin_;
-    }(current_mode);
-
-    bool solve_success = false;     // MPC SQP최적화 연산 성공 여부
-
-    // 0) 도착여부 판단
-    if (active_mode.isGuidanceFinished(current_x)) {
-        RCLCPP_INFO(logger_, "=== 도착 완료!, 추종 종료 ===");
-        cmd_vel.twist.linear.x = 0.0;
-        cmd_vel.twist.angular.z = 0.0;
-        return cmd_vel; 
-    }
-    // 1) 각 모드별 인덱스 위치 동기화
-    active_mode.setClosestIdx(closest_idx_);
-
-    // 2) 현재 상태를 솔버에 제약 조건으로 주입
-    if (prev_mode_ != current_mode) {
-        std::cout << "mode switch : " << prev_mode_ << " -> " << current_mode << std::endl;
-        // prev가 스핀모드였으면 시스템 변수가 다르므로(omega->delta, omega_dot -> delta_dot) 초기화
-        // curr이 스핀모드면 제자리 회전이므로 v, a = 0 / omega, omega_dot = 0부터 시작하도록 초기화
-        if (prev_mode_ == VehicleMode::SpinMode || current_mode == VehicleMode::SpinMode) {
-            current_x[3] = 0.0; // v reset
-            current_x[4] = 0.0; // omega -> delta reset
-            current_u[0] = 0.0; // a reset
-            current_u[1] = 0.0; // omega_dot -> delta_dot reset
+    // 261011 수정: Nav2와 같은 허용오차로 위치 도착 후 최종 yaw를 정렬한다.
+    // 261011 수정: AMCL 보정으로 허용오차 밖으로 밀리면 위치 추종을 재개한다.
+    // 방향 정렬은 허용오차보다 안쪽에서 시작해 회전 중 보정 여유를 확보한다.
+    if (distance > xy_tolerance) final_rotation_ = false;
+    if (distance <= std::min(0.15, xy_tolerance * 0.6)) final_rotation_ = true;
+    if (final_rotation_) {
+        if (std::abs(velocity.linear.x) > 0.02) return command;
+        if (std::abs(yaw_error) > yaw_tolerance) {
+            command.twist.angular.z = std::clamp(1.5 * yaw_error, -0.35, 0.5);
+            checkCommandCollision(pose, command.twist);
         }
+        return command;
     }
-    active_mode.setInitialState(current_x, current_x);
-
-    // 3) 현재 위치를 넘겨주면 내부에서 타겟 인덱스 탐색 및 윈도우 주입 자동 처리
-    closest_idx_ = active_mode.updateSlidingWindow(current_x, current_mode, 
-            min_dist_thres_, zero_velocity_thres_,
-            bi_dtheta_thres_, spin_dtheta_thres_);
-    // 인덱스가 업데이트 되었는지 체크
+    // 261011 수정: 첫 제어 주기에 새 경로의 첫 구간에서만 최근접점을 찾는다.
+    if (initialize_plan_index_) {
+        double best = std::numeric_limits<double>::max();
+        closest_idx_ = 0;
+        for (size_t i = 0; i < resampled_traj_.size(); ++i) {
+            if (resampled_traj_[i].mode != resampled_traj_.front().mode) break;
+            // 261011 수정: 초기 최근접점도 첫 기어 구간을 벗어나지 않는다.
+            if (resampled_traj_[i].gear != resampled_traj_.front().gear) break;
+            const double d = std::hypot(tracking.pose.position.x - resampled_traj_[i].x,
+                tracking.pose.position.y - resampled_traj_[i].y);
+            if (d < best) { best = d; closest_idx_ = static_cast<int>(i); }
+        }
+        initialize_plan_index_ = false;
+    }
+    VehicleMode mode = resampled_traj_[closest_idx_].mode;
+    ::MpcController & active = mode == VehicleMode::SpinMode ?
+        static_cast<::MpcController &>(*mpc_spin_) : static_cast<::MpcController &>(*mpc_bi_);
+    // 261011 수정: 관측한 각속도로 Bicycle 조향 상태를 추정하고 가짜 이전 속도 대입을 제거한다.
+    const double steering = std::abs(measured_v_) > 0.02 ?
+        std::clamp(std::atan(velocity.angular.z * 0.11 / measured_v_), -0.7, 0.7) : 0.0;
+    double state[5] = {tracking.pose.position.x, tracking.pose.position.y, yaw,
+        mode == VehicleMode::SpinMode ? 0.0 : measured_v_,
+        mode == VehicleMode::SpinMode ? velocity.angular.z : steering};
+    double input[2] = {0.0, 0.0};
+    // 261011 수정: 실제 정지 전에는 Spin 모델 또는 반대 방향으로 전환하지 않는다.
+    const bool mode_change = mode != prev_mode_;
+    if ((mode == VehicleMode::SpinMode && std::abs(measured_v_) > 0.02) ||
+        (mode_change && (std::abs(measured_v_) > 0.02 || std::abs(velocity.angular.z) > 0.05))) {
+        return command;
+    }
+    active.setClosestIdx(closest_idx_);
+    active.setInitialState(state, state);
+    if (mode_change) active.setInitialGuess(state, input);
+    closest_idx_ = active.updateSlidingWindow(state, mode, min_dist_thres_, 0.02,
+        bi_dtheta_thres_, spin_dtheta_thres_);
     fsm_->updateDeadLockCnt(closest_idx_, prev_idx_);
-
-    // 4) 최적화 계산
-    solve_success = active_mode.solve();
-    if (solve_success) {
-        RCLCPP_INFO(logger_, "[Solve Success]!!!");
-        // 다음 스텝의 예측 상태를 현재 위치로 누적
-        active_mode.getPredictedState(1, current_x);
-        active_mode.getControlInput(current_u);
-        // active_mode.printStatus();
-        prev_mode_ = current_mode;      // 성공했을때 prev_mode 업데이트
-        prev_steering_ = current_x[4];
-        // 연산 성공 시 회복 카운터 초기화
-        fsm_->resetSolveFailure();
-
-        // cmd_vel.twist.linear.x = current_u[0];
-        // cmd_vel.twist.angular.z = current_u[1];
-        // =========================================================================
-        // [가속도/각가속도(current_u)를 선속도/각속도(cmd_vel)로 변환]
-        // =========================================================================
-        double opt_v = 0.0;
-        double opt_w = 0.0;
-
-        // 1) 목표 선속도 (현재속도 + a * dt)
-        double next_v = current_x[3];
-        // 2) 목표 조향각 (현재조향각 + delta_dot * dt)
-        double next_steering = current_x[4];
-
-        // 3) 기어 반영 (후진 경로일 경우 음수 속도로 변경)
-        // if (resampled_traj_[closest_idx_].gear == 1) {
-        //     next_v = -std::abs(next_v);
-        // }
-        opt_v = next_v;
-
-        // 4) 로봇 기구학 변환 (조향각 -> 회전각속도 w)
-        // L: 차량의 축간거리(Wheelbase), 터틀봇/자체 로봇에 맞게 조정 (예: 0.2m)
-        double wheelbase = 0.11; 
-        if (current_mode == VehicleMode::BicycleMode || current_mode == VehicleMode::ParallelMode) {
-            if (std::abs(opt_v) > 0.001) {
-                opt_w = (opt_v * std::tan(next_steering)) / wheelbase;
-            } else {
-                opt_w = 0.0;
-            }
-        } else { // Spin Mode
-            opt_w = next_steering; // Spin 모드는 조향각 대신 각속도를 직접 제어
-        }
-
-        prev_steering_ = next_steering;
-        prev_idx_ = closest_idx_; // [수정: 데드락 카운터용 직전 인덱스 갱신]
-        prev_opt_v_ = opt_v; // [추가] 다음 주기를 위해 이번에 도출된 최적 속도 저장    
-
-        cmd_vel.twist.linear.x = opt_v;
-        cmd_vel.twist.angular.z = opt_w;
-
-        RCLCPP_INFO(logger_, "[MPC Result] X: %.3f, Y: %.3f, Th: %.3f, V: %.3f, Del: %.3f | a: %.3f, d_dot: %.3f", 
-            current_x[0], current_x[1], current_x[2], current_x[3], current_x[4],
-            current_u[0], current_u[1]);
-        RCLCPP_INFO(logger_, "Cmd_vel v : %.3f, w : %.3f", cmd_vel.twist.linear.x, cmd_vel.twist.angular.z);
-        return cmd_vel;
-    }
-    
-    // 5) 최적화 계산 실패시 절차대로 회복기동
-    if (!solve_success){
-        fsm_->executeSolveFailure(current_x, current_u, closest_idx_, current_mode, active_mode, resampled_traj_);
-        // 루프를 종료(break)하지 않고 다음 제어 주기로 넘어감
-        // continue; 
-        cmd_vel.twist.linear.x = current_u[0];
-        cmd_vel.twist.angular.z = current_u[1];
-        prev_steering_ = current_x[4];
-        return cmd_vel;
-
-    }  
-    
-    // 6) 인덱스가 업데이트 실패 시, 데드락 탈출을 위한 인덱스 skip
+    // 261011 수정: 성공/실패 반환보다 먼저 데드락을 검사해 Nav2 재계획/복구를 요청한다.
     if (fsm_->isDeadLockForReplan()) {
-        RCLCPP_ERROR(logger_, "[FSM] 완전 고립. 전역경로계획 재생성 호출!");
-        fsm_->resetDeadLockSkip();
-        // throw nav2_core::PlannerException("Deadlock detected, trigger global replanning");
+        throw nav2_core::FailedToMakeProgress("MPC reference index made no progress");
     }
-    else if (fsm_->isDeadLock()) {
-        fsm_->executeDeadLockSkip(closest_idx_, current_mode, resampled_traj_);
-        // 인덱스를 건너뛰었으므로 이번 주기는 0을 주고 대기 (다음 주기에 변경된 인덱스로 최적화 진행)
-        RCLCPP_WARN(logger_, "[FSM] 인덱스 스킵 수행. 1 Cycle 정지 대기.");
-        cmd_vel.twist.linear.x = 0.0;
-        cmd_vel.twist.angular.z = 0.0;
-        prev_steering_ = current_x[4];
-        return cmd_vel;
+    if (fsm_->isDeadLock()) {
+        fsm_->executeDeadLockSkip(closest_idx_, mode, resampled_traj_);
+        return command;
     }
-
-    // [모든 분기 후 기본 반환]
+    if (!active.solve()) {
+        // 261011 수정: 가속도/조향각속도를 cmd_vel로 보내지 않고 정지 후 연속 실패를 알린다.
+        if (++solve_failure_count_ >= 3) {
+            throw nav2_core::NoValidControl("MPC solver failed for three consecutive cycles");
+        }
+        active.setInitialGuess(state, input);
+        return command;
+    }
+    solve_failure_count_ = 0;
+    active.getPredictedState(1, state);
+    command.twist.linear.x = mode == VehicleMode::SpinMode ? 0.0 :
+        std::clamp(state[3], -v_max_, v_max_);
+    command.twist.angular.z = mode == VehicleMode::SpinMode ?
+        std::clamp(state[4], -0.35, 0.5) :
+        std::clamp(command.twist.linear.x * std::tan(state[4]) / 0.11, -omega_max_, omega_max_);
+    // 261011 수정: 생성된 궤적이 기어를 바꿀 때 관측 속도가 0이 된 뒤 새 방향을 허용한다.
+    if (command.twist.linear.x * measured_v_ < 0.0 && std::abs(measured_v_) > 0.02) {
+        command.twist.linear.x = command.twist.angular.z = 0.0;
+    }
+    if (!std::isfinite(command.twist.linear.x) || !std::isfinite(command.twist.angular.z)) {
+        throw nav2_core::NoValidControl("MPC produced non-finite velocity");
+    }
+    checkCommandCollision(pose, command.twist);
+    prev_mode_ = mode;
     prev_idx_ = closest_idx_;
-    return cmd_vel;
+    prev_opt_v_ = command.twist.linear.x;
+    prev_steering_ = state[4];
+    RCLCPP_INFO_THROTTLE(logger_, *clock_, 1000, "[MPC] idx=%d v=%.3f w=%.3f",
+        closest_idx_, command.twist.linear.x, command.twist.angular.z);
+    return command;
 }
 
-// 3. 제한 속도 동적 변경
+// 261011 수정: local_costmap 좌표계에서 실제 발행 명령의 1초 예측 footprint를 검사한다.
+void MpcController::checkCommandCollision(
+    const geometry_msgs::msg::PoseStamped & pose, const geometry_msgs::msg::Twist & command)
+{
+    const auto local = transformPoseToPathFrame(pose, costmap_ros_->getGlobalFrameID(), *tf_,
+        tf2::durationFromSec(costmap_ros_->getTransformTolerance()));
+    auto * map = costmap_ros_->getCostmap();
+    const auto footprint = costmap_ros_->getRobotFootprint();
+    std::unique_lock<nav2_costmap_2d::Costmap2D::mutex_t> lock(*map->getMutex());
+    nav2_costmap_2d::FootprintCollisionChecker<nav2_costmap_2d::Costmap2D *> checker(map);
+    double x = local.pose.position.x, y = local.pose.position.y;
+    double theta = tf2::getYaw(local.pose.orientation);
+    for (int i = 0; i <= 20; ++i) {
+        unsigned int mx, my;
+        const double cost = checker.footprintCostAtPose(x, y, theta, footprint);
+        if (!map->worldToMap(x, y, mx, my) ||
+            map->getCost(mx, my) >= nav2_costmap_2d::LETHAL_OBSTACLE ||
+            cost < 0.0 || cost >= nav2_costmap_2d::LETHAL_OBSTACLE) {
+            throw nav2_core::NoValidControl("MPC command footprint collides with local costmap");
+        }
+        x += command.linear.x * std::cos(theta + command.angular.z * 0.025) * 0.05;
+        y += command.linear.x * std::sin(theta + command.angular.z * 0.025) * 0.05;
+        theta += command.angular.z * 0.05;
+    }
+}
+
+// 261011 수정: 속도 제한을 기본 속도에서 계산하고 기존 참조에도 즉시 반영한다.
 void MpcController::setSpeedLimit(const double& speed_limit, const bool& percentage)
 {
-    // // speed_limit이 0.0 근처로 들어오거나 특정 상수(NO_SPEED_LIMIT)로 들어오면 속도 제한 해제
-    // if (speed_limit == 0.0 || speed_limit == nav2_costmap_2d::NO_SPEED_LIMIT) {
-    //     v_max_ = v_max_;
-    // }
-    if (percentage) {
-        // 퍼센티지 제한 (예: 50.0 이면 원래 속도의 절반인 0.25 m/s)
-        v_max_ *= (speed_limit / 100.0);
+    const double requested = speed_limit == nav2_costmap_2d::NO_SPEED_LIMIT ?
+        configured_v_max_ : (percentage ? configured_v_max_ * speed_limit / 100.0 : speed_limit);
+    if (!std::isfinite(requested) || requested < 0.0) return;
+    v_max_ = std::min(configured_v_max_, requested);
+    resampled_traj_ = unlimited_traj_;  // 261011 수정: 제한을 누적하지 않고 기준 궤적에서 재계산.
+    for (auto & point : resampled_traj_) {
+        point.v = std::clamp(point.v, -v_max_, v_max_);
     }
-    else {
-        // 절대 속도 제한 (예: 무조건 0.2 m/s 이하로)
-        v_max_ = speed_limit;
-    }
-
-    RCLCPP_INFO(logger_, "Speed limit dynamically updated! Current v_max: %.2f", v_max_);
+    mpc_bi_->setRefTrajectoryData(resampled_traj_);
+    mpc_spin_->setRefTrajectoryData(resampled_traj_);
 }
 
 // publisher cost map to rviz2

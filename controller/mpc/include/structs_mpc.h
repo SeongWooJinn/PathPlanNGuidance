@@ -11,6 +11,8 @@ struct ReferenceTraj {
     double a, delta_dot;          // 제어 입력 목표
     double obs;                   // 추가 변수 
     VehicleMode mode;             // hastar 현재 추종 궤적의 모드 전환을 위해
+    // 261011 수정: 속도가 0인 기어 경계에서도 전진/후진 정보를 잃지 않는다.
+    int gear = 0;
 };
 
 // 종점용 (5차원: 상태 5)

@@ -18,9 +18,15 @@
   <depend>nav_msgs</depend>
   <depend>sensor_msgs</depend>
   <depend>rclcpp_lifecycle</depend>
+  <!-- 260905 추가: 로봇 자세의 TF 변환에 사용하는 직접 의존성. -->
+  <depend>tf2</depend>
+  <depend>tf2_ros</depend>
+  <depend>tf2_geometry_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
+  <!-- 260905 추가: 좌표계 변환 회귀 테스트 실행 도구. -->
+  <test_depend>ament_cmake_gtest</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

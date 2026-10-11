@@ -21,6 +21,10 @@ find_package(geometry_msgs REQUIRED)
 find_package(nav_msgs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)
+# 260905 추가: PoseStamped TF 변환에 직접 사용하는 의존성을 명시한다.
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(tf2_geometry_msgs REQUIRED)
 
 # ROS 2용 빌드 도구 (추후 colcon build를 위해 유지)
 find_package(ament_cmake REQUIRED) 
@@ -101,6 +105,10 @@ ament_target_dependencies(${PROJECT_NAME}
     geometry_msgs
     nav_msgs
     sensor_msgs
+    # 260905 추가: 좌표계 변환 구현의 헤더와 라이브러리를 연결한다.
+    tf2
+    tf2_ros
+    tf2_geometry_msgs
 )
 
 # 7. 플러그인 XML 파일 등록 (Nav2에서 플러그인을 찾을 수 있게 해줌)
@@ -136,5 +144,19 @@ install(FILES
 # ament_export_include_directories(include)
 # ament_export_libraries(${PROJECT_NAME})
 # ament_export_targets(export_${PROJECT_NAME})
+
+# 260905 추가: 이동·회전·시각 보존 및 TF 실패 처리를 자동 검증한다.
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_path_frame_utils test/test_path_frame_utils.cpp)
+  target_include_directories(test_path_frame_utils PRIVATE include)
+  ament_target_dependencies(test_path_frame_utils
+    rclcpp nav2_core nav_msgs geometry_msgs tf2 tf2_ros tf2_geometry_msgs)
+  # 261011 수정: 실제 궤적 생성 함수의 후진·Spin·종점·속도 일관성을 검증한다.
+  ament_add_gtest(test_reference_trajectory test/test_reference_trajectory.cpp)
+  target_include_directories(test_reference_trajectory PRIVATE
+    ${CONTROLLER_DIR} ${CONTROLLER_DIR}/mpc/include ${COMMONS_DIR}/include ${OpenCV_INCLUDE_DIRS})
+  target_link_libraries(test_reference_trajectory ${OpenCV_LIBS})
+endif()
 
 ament_package()

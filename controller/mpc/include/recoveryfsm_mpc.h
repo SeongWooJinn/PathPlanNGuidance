@@ -16,6 +16,8 @@ private:
     int deadlock_cnt_ = 0;
     int max_deadlock_cnt_for_idx_skip_ = 33;
     int max_deadlock_cnt_for_replan_ = 99;
+    // 261011 수정: 스킵 재시도 때문에 재계획 임계값 카운터가 영원히 초기화되지 않게 분리한다.
+    int total_deadlock_cnt_ = 0;
 
     double dt_;
     double a_dec_mag_;
@@ -80,7 +82,9 @@ private:
     {
         // 다음 궤적이 다른 모드라면 스킵 절대 금지!
         int next_idx = std::min(closest_idx + 1, (int)resampled_traj.size() - 1);
-        if (resampled_traj[next_idx].mode == curr_mode) {
+        // 261011 수정: 데드락 스킵으로 정지 없이 기어 경계를 넘지 않는다.
+        if (resampled_traj[next_idx].mode == curr_mode &&
+            resampled_traj[next_idx].gear == resampled_traj[closest_idx].gear) {
             closest_idx = next_idx; // 같은 모드일 때만 인덱스를 건너뜀
         } else {
             // 이때 전역경로 재생성 가능
@@ -136,20 +140,25 @@ public:
 
     // 2. best index update failure
     void resetDeadLockSkip() {
+        total_deadlock_cnt_ = 0;  // 261011 수정: 새 경로가 들어올 때 누적 고립 상태를 해제한다.
         if (deadlock_cnt_ > 0)
             deadlock_cnt_ = 0;
     }
     void updateDeadLockCnt(int curr_closest_idx, int& prev_closest_idx)
     {
-        if (curr_closest_idx == prev_closest_idx)
+        if (curr_closest_idx == prev_closest_idx) {
             deadlock_cnt_++;
+            total_deadlock_cnt_++;  // 261011 수정: 같은 인덱스에서 정체된 전체 주기 수.
+        }
         else {
+            total_deadlock_cnt_ = 0;  // 261011 수정: 실제 인덱스가 전진하면 정체 해제.
             deadlock_cnt_ = 0;
             prev_closest_idx = curr_closest_idx;
         }
     }
     bool isDeadLock() { return deadlock_cnt_ > max_deadlock_cnt_for_idx_skip_; }
-    bool isDeadLockForReplan() { return deadlock_cnt_ > max_deadlock_cnt_for_replan_;}
+    // 261011 수정: 스킵 카운터와 독립적으로 장기 정체를 Nav2 복구로 전달한다.
+    bool isDeadLockForReplan() { return total_deadlock_cnt_ > max_deadlock_cnt_for_replan_;}
     void executeDeadLockSkip(
             int& closest_idx,
             VehicleMode curr_mode, 

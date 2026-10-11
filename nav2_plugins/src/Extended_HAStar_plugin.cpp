@@ -204,7 +204,7 @@ nav_msgs::msg::Path ExtendedHybridAStarPlanner::createPlan(
     planner_->setWeights(plannerweights_);
     // vehicle mode 등록
     planner_->registVehicleMode(std::move(bicycle));
-    planner_->registVehicleMode(std::move(crab));
+    // planner_->registVehicleMode(std::move(crab));        // waffle has no crab mode
     planner_->registVehicleMode(std::move(spin));
 
     // 3. Setting for path planning 
