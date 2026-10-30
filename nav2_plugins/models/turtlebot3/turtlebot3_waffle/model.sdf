@@ -134,9 +134,11 @@
 
       <sensor name="hls_lfcd_lds" type="gpu_lidar">
         <always_on>true</always_on>
-        <visualize>true</visualize>
+        <!-- <visualize>true</visualize> 260904 수정 -->
+        <visualize>false</visualize>
         <pose>-0.064 0 0.121 0 0 0</pose>
-        <update_rate>10</update_rate>
+        <!-- <update_rate>10</update_rate> 260904 수정 -->
+        <update_rate>5</update_rate>
         <topic>scan</topic>
         <gz_frame_id>base_scan</gz_frame_id>
         <lidar>
@@ -372,17 +374,22 @@
 
       <pose>0.069 -0.047 0.107 0 0 0</pose>
       <sensor name="camera" type="camera">
-        <always_on>true</always_on>
-        <visualize>true</visualize>
-        <update_rate>30</update_rate>
+        <!-- <always_on>true</always_on> 260904 수정 -->
+        <always_on>false</always_on>
+        <!-- <visualize>true</visualize> 260904 수정 -->
+        <visualize>false</visualize>
+        <!-- <update_rate>30</update_rate> 260904 수정 -->
+        <update_rate>5</update_rate>
         <topic>camera/image_raw</topic>
         <gz_frame_id>camera_rgb_frame</gz_frame_id>
         <camera name="intel_realsense_r200">
           <camera_info_topic>camera/camera_info</camera_info_topic>
           <horizontal_fov>1.02974</horizontal_fov>
           <image>
-            <width>1920</width>
-            <height>1080</height>
+            <!-- <width>1920</width> 260904 수정 -->
+            <width>640</width>
+            <!-- <height>1080</height> 260904 수정 -->
+            <height>480</height>
             <format>R8G8B8</format>
           </image>
           <clip>

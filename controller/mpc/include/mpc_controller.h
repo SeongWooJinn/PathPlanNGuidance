@@ -33,6 +33,8 @@ protected:
 
     // for eval
     RealTimePerformance rt_stats;
+    // 261011 수정: 재계획의 첫 속도는 측정값으로 시작하고 기어 방향을 보존한다.
+    double initial_reference_speed_ = 0.0;
 
 //////// helper functions ////////
     inline double calcDistance(double x1, double y1, double x2, double y2) const 
@@ -41,6 +43,19 @@ protected:
     }
 
 public:
+    // 261011 수정: Waffle은 큰 방향 오차를 줄이느라 위치 경로를 벗어나지 않도록 위치 가중치를 높인다.
+    void configureTrackingWeights() {
+        const double weights[8] = {30.0, 30.0, 8.0, 5.0, 0.5, 1.0, 2.0, 6000.0};
+        double matrix[64] = {};
+        double terminal[25] = {};
+        for (int i = 0; i < 8; ++i) matrix[i * 8 + i] = weights[i];
+        for (int i = 0; i < 5; ++i) terminal[i * 5 + i] = weights[i];
+        for (int i = 0; i < N_; ++i) {
+            ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, i, "W", matrix);
+        }
+        ocp_nlp_cost_model_set(nlp_config_, nlp_dims_, nlp_in_, N_, "W", terminal);
+    }
+    void setInitialReferenceSpeed(double speed) { initial_reference_speed_ = speed; }
     // virtual ~MpcController() = default;
     virtual ~MpcController() {
         if (rt_stats.cnt_ > 0) {
@@ -69,6 +84,7 @@ public:
             spatial_ref[i].delta = global_path[i].steering;
             spatial_ref[i].v = (global_path[i].gear == 0) ? v_max : -v_max;
             spatial_ref[i].mode = global_path[i].vehicle;
+            spatial_ref[i].gear = global_path[i].gear;  // 261011 수정: 명시적 기어 정보 전달.
             // std::cout << spatial_ref[0].mode << std::endl;
             // 모드 전환 or 기어 전환 지점에서는 v = 0
             if (i > 0) {
@@ -105,6 +121,9 @@ public:
         }
         spatial_ref.back().v = 0.0; // 종점 정지
 
+        // 261011 수정: 실제 속도와 새 첫 구간의 방향이 일치할 때만 초기 속도를 이어받는다.
+        spatial_ref.front().v = spatial_ref.front().v * initial_reference_speed_ > 0.0 ?
+            std::copysign(std::min(std::abs(initial_reference_speed_), v_max), initial_reference_speed_) : 0.0;
         // 3. 감가속 제약, v^2 - v0^2 = 2as
         accelerationProfile(spatial_ref, a_acc_mag);
         // 언제부터 브레이크를 밟을 것인지 check
@@ -118,7 +137,8 @@ public:
         std::cout << spatial_ref[0].mode << std::endl;
 
         // 4. 시간 기반 리샘플링, 시간 기반 궤적 계산
-        ref_traj_ = resampleTimeBasedTrajectory(spatial_ref, dt);
+        // 261011 수정: 양끝 정지 구간도 설정 가속도/최대 속도 범위 내에서 시간화한다.
+        ref_traj_ = resampleTimeBasedTrajectory(spatial_ref, dt, a_acc_mag, v_max);
 
         // Theta 언랩핑 (각도 점프 제거)
         // 3.14에서 -3.14로 뛰는 현상을 3.14 -> 3.15 로 부드럽게 이어줌
@@ -159,6 +179,9 @@ public:
         int best_idx = current_closest_idx_;
         int search_limit = std::min(current_closest_idx_ + 100, (int)ref_traj_.size());
         for (int i = current_closest_idx_; i < search_limit; ++i) {
+            // 261011 수정: 최근접점 검색은 현재 모드/기어 구간을 넘어가지 않는다.
+            if (ref_traj_[i].mode != curr_mode) break;
+            if (ref_traj_[i].gear != ref_traj_[current_closest_idx_].gear) break;
             
             double dist = 0.0;
             if (curr_mode == VehicleMode::SpinMode) {
@@ -202,7 +225,11 @@ public:
         }
         
         // 도달했을 경우에만 인덱스 전진 (역행 방지)
-        if (is_arrived) {
+        // 261011 수정: 모드/기어 경계는 측정 속도가 충분히 작아진 뒤에만 넘긴다.
+        const int next = std::min(best_idx + 1, (int)ref_traj_.size() - 1);
+        const bool boundary = ref_traj_[next].mode != curr_mode ||
+            ref_traj_[best_idx].gear != ref_traj_[next].gear;
+        if (is_arrived && (!boundary || std::abs(curr[3]) < zero_v)) {
             // current_closest_idx_가 아닌, 현재 찾은 best_idx를 기준으로 +1 전진
             best_idx = std::min(best_idx + 1, (int)ref_traj_.size() - 1);
         }
@@ -221,12 +248,21 @@ public:
             int idx = std::min(current_closest_idx_ + i, (int)ref_traj_.size() - 1);
             
             // 미래 예측 윈도우 내에서 모드가 바뀌는 순간 포착
-            if (!mode_switched && ref_traj_[idx].mode != curr_mode) {
+            // 261011 수정: 예측 참조는 모드뿐 아니라 전후진 경계에서도 정지한다.
+            if (!mode_switched && (ref_traj_[idx].mode != curr_mode ||
+                ref_traj_[idx].gear != ref_traj_[current_closest_idx_].gear)) {
                 mode_switched = true;
             }
             
             // 1. 일단 위치(x, y)와 타겟 상태는 원본 궤적을 그대로 복사
             yref_window[i] = ref_traj_[idx];
+            // 261011 수정: 다른 모드의 참조는 현재 구간 끝에서 정지시켜 모델 혼합을 방지한다.
+            if (mode_switched) {
+                const int stop = std::max(current_closest_idx_, idx - 1);
+                yref_window[i] = i > 0 ? yref_window[i - 1] : ref_traj_[stop];
+                yref_window[i].v = yref_window[i].a = 0.0;
+                yref_window[i].delta = yref_window[i].delta_dot = 0.0;
+            }
             
             // 2. 만약 미래 궤적이 다른 모드라면, 기구학적으로 불가능한 요구만 마스킹!
             if (mode_switched) {

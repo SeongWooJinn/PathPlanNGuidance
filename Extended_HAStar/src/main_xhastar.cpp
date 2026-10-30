@@ -34,7 +34,7 @@ int main() {
     RobotConfigs my_robot;
 
     // ROBOT1 : MY ROBOT
-    my_robot.WB = 1.0;
+    my_robot.WB = 0.6;
     my_robot.robot_length = 1.0;
     my_robot.robot_width = 0.6; // footprint (m)
     my_robot.switch_time = 1.0;
@@ -44,9 +44,9 @@ int main() {
     my_robot.delta_max = 30.0 * M_PI / 180.0; // rad
     // my_robot.delta_max = 75.0 * M_PI / 180.0;    // spin mode 안쓸때, nsteer도 크게필
     // my_robot.beta = M_PI;     // 180도 회전 [-PI/2, PI/2]  
-    my_robot.alpha = 20.0 * M_PI / 180.0;    // parallel mode max alpha, actionset범위 조절 가능 
+    my_robot.alpha = 30.0 * M_PI / 180.0;    // parallel mode max alpha, actionset범위 조절 가능 
     my_robot.beta = 20.0 * M_PI / 180.0;     // spin mode max beta, 180도 회전 [-PI/2, PI/2]  
-    my_robot.nsteer = 5;
+    my_robot.nsteer = 7;
 
     // // ROBOT2 : TURTLEBOT3 WAFFLE
     // double WB = 0.14;
@@ -67,7 +67,7 @@ int main() {
     planner_w.use_guide_heuristic = false;    // guide_heuristic or dij_rs_heuristic
 
     // 2. Cost Map Settings
-    planner_w.costmap_type = 3; // 0: Voronoi, 1: Exponential, 2: Sigmoid, 3: Nav2
+    planner_w.costmap_type = 0; // 0: Voronoi, 1: Exponential, 2: Sigmoid, 3: Nav2
     planner_w.nav2_decay_rate = 1.0;      
     planner_w.exp_decay_rate = 1.0;
     planner_w.sig_inflation_w = 1.0;
@@ -141,7 +141,7 @@ int main() {
     // vehicle mode 등록
     hastar.registVehicleMode(std::move(bicycle));       // non holonimic mode essential!!!
     // hastar.registVehicleMode(std::move(crab));
-    hastar.registVehicleMode(std::move(spin));
+    // hastar.registVehicleMode(std::move(spin));
 
     // Global Hybrid AStar Path
     //std::vector<std::pair<State, VehicleMode>> g_path;
@@ -161,7 +161,7 @@ int main() {
             cell_size, 
             my_robot.robot_length, 
             my_robot.robot_width, 
-            "Global Hybrid A* path in GT map", 
+            "Global Hybrid A* path in GT map 4", 
             resolution);
         // hastar.visualize_searched_segs(sx, sy, gx, gy, 10, "State Expansions");
     }

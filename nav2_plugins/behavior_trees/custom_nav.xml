@@ -10,7 +10,8 @@
       <PipelineSequence name="NavigateWithReplanning">
         <ControllerSelector selected_controller="{selected_controller}" default_controller="FollowPath" topic_name="controller_selector"/>
         <PlannerSelector selected_planner="{selected_planner}" default_planner="ExtendedHybridAStar" topic_name="planner_selector"/>
-        <RateController hz="1.0">
+        <!-- 260905 재계획 주기 <RateController hz="1.0"> -->
+        <RateController hz="0.3">
           <RecoveryNode number_of_retries="1" name="ComputePathToPose">
             <ComputePathToPose goal="{goal}" path="{path}" planner_id="{selected_planner}" error_code_id="{compute_path_error_code}"/>
             <Sequence>

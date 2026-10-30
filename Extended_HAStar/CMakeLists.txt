@@ -103,7 +103,7 @@ add_library(extended_hastar_lib SHARED
 # 3. 라이브러리가 헤더 파일을 찾을 수 있도록 경로 지정 (PUBLIC으로 설정해야 다른 패키지에서도 이 경로를 알 수 있습니다)
 target_include_directories(extended_hastar_lib PUBLIC
     include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../maps/include
+    # ${CMAKE_CURRENT_SOURCE_DIR}/../maps/include
     ${CMAKE_CURRENT_SOURCE_DIR}/../commons/include
     ${OpenCV_INCLUDE_DIRS}
     ${EIGEN3_INCLUDE_DIRS}
@@ -129,7 +129,7 @@ install(DIRECTORY include/
 )
 
 # 6. ament 패키지로 내보내기
-ament_export_include_directories(include)
+ament_export_include_directories(include)   # 내 include폴더를 다른 패키지가 공유할 수 있도록
 ament_export_libraries(extended_hastar_lib)
 ament_export_dependencies(OpenCV ompl Eigen3)
 ament_package()

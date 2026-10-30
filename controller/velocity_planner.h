@@ -17,7 +17,7 @@ inline void accelerationProfile(
 {
     if (path.empty()) return;
 
-    path[0].v = 0.0;
+    // 261011 수정: 재계획 시 전달된 현재 속도를 유지하여 매번 정지부터 가속하지 않는다.
     // std::vector<double> s_spatial(path.size(), 0.0);
 
     for(int i = 1; i < path.size(); ++i){
@@ -204,94 +204,88 @@ inline ReferenceTraj hermiteSplineinterpolateState(
 
 inline std::vector<ReferenceTraj> resampleTimeBasedTrajectory(
     const std::vector<ReferenceTraj>& spatial_path, 
-    double dt)
+    double dt, double acceleration = 1.0, double max_velocity = 0.26)
 {
     std::vector<ReferenceTraj> temporal_path;
     if (spatial_path.empty()) return temporal_path;
 
-    // 1. 공간 경로의 각 점까지의 누적 거리(s) 계산
-    std::vector<double> s_spatial(spatial_path.size(), 0.0);
-    for (size_t i = 1; i < spatial_path.size(); ++i) {
-        double dx = spatial_path[i].x - spatial_path[i-1].x;
-        double dy = spatial_path[i].y - spatial_path[i-1].y;
-        double ds = std::hypot(dx, dy);
-
-        // 핵심: 물리적 거리가 0인 SpinMode 구간에 '가상 거리' 부여
-        if (spatial_path[i].mode == VehicleMode::SpinMode) {
-            double dtheta = std::abs(normalizeAngle(spatial_path[i].theta - spatial_path[i-1].theta));
-            if (dtheta > 0.05) {
-                ds = dtheta * 1.0; // 1라디안 회전을 1m 전진과 동일하게 취급
-            } else {
-                ds = 0.1; // 제자리 버퍼
+    // 261011 수정: 단일 점과 잘못된 dt를 방어하고 구간별 이동 시간으로 리샘플링한다.
+    if (spatial_path.size() == 1 || !std::isfinite(dt) || dt <= 0.0) {
+        temporal_path.push_back(spatial_path.front());
+        return temporal_path;
+    }
+    temporal_path.push_back(spatial_path.front());
+    for (size_t i = 0; i + 1 < spatial_path.size(); ++i) {
+        const auto & start = spatial_path[i];
+        const auto & end = spatial_path[i + 1];
+        const double distance = std::hypot(end.x - start.x, end.y - start.y);
+        const double yaw_change = normalizeAngle(end.theta - start.theta);
+        const bool spin = start.mode == VehicleMode::SpinMode;
+        // 261011 수정: Spin은 생성 솔버의 양방향 한계 안인 0.3 rad/s로 시간화한다.
+        // 261011 수정: 양끝 정지 구간은 최소 이동량 대신 제한된 삼각/사다리꼴 속도 프로파일을 만든다.
+        const bool rest_to_rest = !spin && std::abs(start.v) + std::abs(end.v) < 1e-9;
+        const double accel = std::max(1e-3, acceleration);
+        const double peak = std::min(std::max(1e-3, max_velocity), std::sqrt(accel * distance));
+        const double ramp = peak / accel;
+        const double cruise = peak > 1e-9 ? std::max(0.0, distance - peak * ramp) / peak : 0.0;
+        const double duration = spin ? std::abs(yaw_change) / 0.3 :
+            (rest_to_rest ? 2.0 * ramp + cruise :
+            2.0 * distance / (std::abs(start.v) + std::abs(end.v)));
+        if (duration < 1e-9) continue;
+        const int steps = std::max(1, static_cast<int>(std::ceil(duration / dt)));
+        if (steps > 100000 || temporal_path.size() + steps > 1000000) {
+            return {};  // 261011 수정: 비정상 경로의 무제한 메모리 증가를 거부한다.
+        }
+        for (int step = 1; step <= steps; ++step) {
+            // 261011 수정: 가감속 구간의 위치는 속도 적분 비율로 보간한다.
+            const double u = static_cast<double>(step) / steps;
+            const double v0 = std::abs(start.v), v1 = std::abs(end.v);
+            double r = spin || v0 + v1 < 1e-9 ? u :
+                (2.0 * v0 * u + (v1 - v0) * u * u) / (v0 + v1);
+            double motion_speed = start.v + u * (end.v - start.v);
+            if (rest_to_rest && distance > 1e-9) {
+                const double t = u * duration;
+                double traveled;
+                if (t < ramp) {
+                    traveled = 0.5 * accel * t * t;
+                    motion_speed = accel * t;
+                } else if (t <= ramp + cruise) {
+                    traveled = 0.5 * peak * ramp + peak * (t - ramp);
+                    motion_speed = peak;
+                } else {
+                    const double remaining = duration - t;
+                    traveled = distance - 0.5 * accel * remaining * remaining;
+                    motion_speed = accel * remaining;
+                }
+                r = std::clamp(traveled / distance, 0.0, 1.0);
+                motion_speed *= (start.gear == 1 ? -1.0 : 1.0) * duration / (steps * dt);
             }
+            ReferenceTraj point{};
+            // 261011 수정: 직선 보간은 원래 충돌 검사된 경로 밖으로 스플라인이 튀는 것을 막는다.
+            point.x = spin ? start.x : start.x + r * (end.x - start.x);
+            point.y = spin ? start.y : start.y + r * (end.y - start.y);
+            point.theta = start.theta + r * yaw_change;
+            point.v = spin ? 0.0 : motion_speed;
+            // 261011 수정: 곡선의 조향 참조를 0으로 버리지 않고 보간하며 기어 경계의 혼합을 막는다.
+            point.delta = spin ? yaw_change / (steps * dt) :
+                (start.gear == end.gear && start.mode == end.mode ?
+                start.delta + u * (end.delta - start.delta) : start.delta);
+            point.mode = start.mode;
+            // 261011 수정: 정지점에서도 outgoing 구간의 기어를 유지한다.
+            point.gear = start.gear;
+            point.a = (point.v - temporal_path.back().v) / dt;
+            point.delta_dot = (point.delta - temporal_path.back().delta) / dt;
+            temporal_path.push_back(point);
         }
-        s_spatial[i] = s_spatial[i-1] + ds;
+        // 261011 수정: 다음 구간의 모드를 경계점에 보존해 실제 정지 후 전환할 수 있게 한다.
+        temporal_path.back().mode = end.mode;
+        temporal_path.back().gear = end.gear;  // 261011 수정: 기어 전환 경계 보존.
     }
-    double total_distance = s_spatial.back();
-
-    // 2. 초기점(t=0) 세팅
-    // std::cout << "222 : " << spatial_path[0].mode << std::endl;
-    ReferenceTraj first_pt = hermiteSplineinterpolateState(spatial_path[0], spatial_path[1], 0.0);
-    first_pt.a = 0.0;
-    first_pt.delta_dot = 0.0;
-    temporal_path.push_back(first_pt);
-
-    double s_target = 0.0; // 로봇이 이동해야 할 누적 목표 거리
-    int idx = 0;           // 탐색을 위한 공간 경로 인덱스
-
-    // 3. 시간(dt) 기준으로 전진하며 리샘플링 (목적지에 도달할 때까지)
-    while (s_target < total_distance) {
-        
-        // 1. 이전 스텝의 상태를 가져와서, 다음 dt 동안 얼마나 갈지 계산
-        ReferenceTraj prev_pt = temporal_path.back();
-        
-        // 속도가 0이 되어 무한루프에 빠지는 것을 막기 위해 최소 이동거리 0.01m 보장
-        double ds = std::max(std::abs(prev_pt.v) * dt, 0.01); 
-        s_target += ds;
-
-        if (s_target >= total_distance) break;
-
-        // 2. s_target이 위치한 공간 경로상의 선분(idx ~ idx+1) 찾기
-        while (idx < spatial_path.size() - 1 && s_spatial[idx + 1] < s_target) {
-            idx++;
-        }
-
-        // 3. 해당 선분 내에서의 보간 비율(r) 계산
-        double segment_length = s_spatial[idx + 1] - s_spatial[idx];
-        double r = (s_target - s_spatial[idx]) / segment_length;
-
-        // 4. x, y, theta, delta, v 보간!
-        ReferenceTraj new_pt = hermiteSplineinterpolateState(spatial_path[idx], spatial_path[idx + 1], r);
-
-        // 5. 미분값 추출 (a, delta_dot)
-        new_pt.a = (new_pt.v - prev_pt.v) / dt;
-        // ==========================================================
-        if (new_pt.mode == VehicleMode::SpinMode) {
-            double diff_theta = normalizeAngle(new_pt.theta - prev_pt.theta);
-            new_pt.delta = diff_theta / dt; // omega
-
-            double diff_omega = (new_pt.delta - prev_pt.delta) / dt; 
-            new_pt.delta_dot = diff_omega; // omega_dot 각가속도
-            // std::cout << new_pt.delta_dot << std::endl;
-            // MPC 역할, [선택] 스핀모드 각속도, 각가속도 클램핑 가능
-        } 
-
-        // 조향각속도: 각도 랩어라운드(Wrap-around)를 고려하여 차이 계산
-        double diff_delta = new_pt.delta - prev_pt.delta;
-        new_pt.delta_dot = diff_delta / dt;
-        // MPC 역할, [선택] 조향각속도 클램핑 가능
-
-        temporal_path.push_back(new_pt);
-    }
-
-    // 4. 종점 처리 (속도 및 제어 입력 0)
-    ReferenceTraj last_pt = temporal_path.back(); // 혹은 spatial_path의 마지막 점 복사
-    last_pt.v = 0.0;
-    last_pt.a = 0.0;
-    last_pt.delta_dot = 0.0;
-    temporal_path.push_back(last_pt);
-
+    ReferenceTraj last = spatial_path.back();
+    last.v = last.a = last.delta = last.delta_dot = 0.0;
+    temporal_path.push_back(last);
     return temporal_path;
 }
+
 
 #endif
